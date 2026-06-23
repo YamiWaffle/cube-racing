@@ -17,6 +17,9 @@ namespace CubeRacing
         {
             DOTween.Init();
 
+            if (_npcConfig == null)
+                throw new System.InvalidOperationException("[Main] NpcConfig is not assigned in the Inspector.");
+
             // MessagePipe
             builder.RegisterMessagePipe();
             
