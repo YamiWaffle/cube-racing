@@ -23,6 +23,7 @@ builder.Services.Configure<List<NpcConfig>>(builder.Configuration.GetSection("Np
 // EF Core
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
 // Repositories
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();

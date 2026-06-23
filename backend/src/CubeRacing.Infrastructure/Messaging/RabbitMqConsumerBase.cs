@@ -26,16 +26,23 @@ public abstract class RabbitMqConsumerBase : BackgroundService
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.Received += async (_, ea) =>
         {
-            try
+            var body = Encoding.UTF8.GetString(ea.Body.ToArray());
+            int attempts = 0;
+            while (attempts < 3)
             {
-                var body = Encoding.UTF8.GetString(ea.Body.ToArray());
-                await HandleAsync(body, ct);
-                channel.BasicAck(ea.DeliveryTag, false);
+                try
+                {
+                    await HandleAsync(body, ct);
+                    channel.BasicAck(ea.DeliveryTag, false);
+                    return;
+                }
+                catch
+                {
+                    attempts++;
+                    if (attempts < 3) await Task.Delay(1000, ct);
+                }
             }
-            catch
-            {
-                channel.BasicNack(ea.DeliveryTag, false, requeue: false);
-            }
+            channel.BasicNack(ea.DeliveryTag, false, requeue: false);
         };
         channel.BasicConsume(_queue, autoAck: false, consumer);
 

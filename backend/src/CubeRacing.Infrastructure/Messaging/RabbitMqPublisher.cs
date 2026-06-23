@@ -9,6 +9,7 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
 {
     private readonly IConnection _connection;
     private readonly IModel _channel;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public RabbitMqPublisher(IConnectionFactory factory)
     {
@@ -16,18 +17,26 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
         _channel = _connection.CreateModel();
     }
 
-    public Task PublishAsync<T>(string queue, T message, CancellationToken ct = default)
+    public async Task PublishAsync<T>(string queue, T message, CancellationToken ct = default)
     {
-        _channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false);
-        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-        var props = _channel.CreateBasicProperties();
-        props.Persistent = true;
-        _channel.BasicPublish("", queue, props, body);
-        return Task.CompletedTask;
+        await _semaphore.WaitAsync(ct);
+        try
+        {
+            _channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false);
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+            var props = _channel.CreateBasicProperties();
+            props.Persistent = true;
+            _channel.BasicPublish("", queue, props, body);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public void Dispose()
     {
+        _semaphore.Dispose();
         _channel.Dispose();
         _connection.Dispose();
     }

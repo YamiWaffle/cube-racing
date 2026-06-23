@@ -4,13 +4,14 @@ namespace CubeRacing.Infrastructure.Services;
 
 public class SessionCompletionSignal : ISessionCompletionSignal
 {
-    private TaskCompletionSource _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly SemaphoreSlim _semaphore = new(0, 1);
 
-    public Task WaitAsync(CancellationToken ct) => _tcs.Task.WaitAsync(ct);
+    public Task WaitAsync(CancellationToken ct) => _semaphore.WaitAsync(ct);
 
     public void Signal()
     {
-        var old = Interlocked.Exchange(ref _tcs, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
-        old.TrySetResult();
+        // Release only if count is 0 (idempotent — prevents double-release exception)
+        if (_semaphore.CurrentCount == 0)
+            _semaphore.Release();
     }
 }

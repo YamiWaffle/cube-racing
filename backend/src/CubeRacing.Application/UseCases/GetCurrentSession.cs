@@ -1,7 +1,9 @@
+using CubeRacing.Application.Config;
 using CubeRacing.Application.Dtos;
 using CubeRacing.Application.Interfaces;
 using CubeRacing.Domain.Enums;
 using CubeRacing.Domain.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace CubeRacing.Application.UseCases;
 
@@ -10,12 +12,15 @@ public class GetCurrentSession
     private readonly ICurrentSessionStore _store;
     private readonly IGameSessionRepository _sessions;
     private readonly IBetRepository _bets;
+    private readonly GameSettings _settings;
 
-    public GetCurrentSession(ICurrentSessionStore store, IGameSessionRepository sessions, IBetRepository bets)
+    public GetCurrentSession(ICurrentSessionStore store, IGameSessionRepository sessions, IBetRepository bets,
+        IOptions<GameSettings> settings)
     {
         _store = store;
         _sessions = sessions;
         _bets = bets;
+        _settings = settings.Value;
     }
 
     public async Task<CurrentSessionDto?> ExecuteAsync(CancellationToken ct = default)
@@ -27,7 +32,7 @@ public class GetCurrentSession
 
         var allBets = await _bets.GetBySessionAsync(session.Id, ct);
         var poolByNpc = allBets.GroupBy(b => b.NpcId).ToDictionary(g => g.Key, g => g.Sum(b => b.Amount));
-        var npcOdds = Enumerable.Range(1, 4).Select(id =>
+        var npcOdds = Enumerable.Range(1, _settings.NpcCount).Select(id =>
         {
             double? odds = poolByNpc.TryGetValue(id, out var pool) && pool > 0 && session.TotalPool > 0
                 ? (double)session.TotalPool / pool

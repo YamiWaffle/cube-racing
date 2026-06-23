@@ -43,7 +43,8 @@ public class SessionsController : ControllerBase
                 PlaceBetError.BettingClosed => Conflict(new { error = "Betting is closed." }),
                 PlaceBetError.AlreadyBet => Conflict(new { error = "You have already placed a bet this session." }),
                 PlaceBetError.InsufficientChips => BadRequest(new { error = "Insufficient chips." }),
-                PlaceBetError.InvalidNpcId => BadRequest(new { error = "Invalid NPC ID. Must be 1–4." }),
+                PlaceBetError.InvalidNpcId => BadRequest(new { error = "Invalid NPC ID." }),
+                PlaceBetError.InvalidAmount => BadRequest(new { error = "Amount must be greater than zero." }),
                 _ => NotFound(new { error = "Session not found." })
             };
         }

@@ -111,4 +111,23 @@ public class RaceSimulatorTests
         var sim = new RaceSimulator(4, 20);
         sim.GetWinner().Should().BeNull();
     }
+
+    [Fact]
+    public void NpcFromAlreadyMovedStackIsSkippedInSameRound()
+    {
+        // Stack [1, 2] at sq5. NPC2 (top) goes first.
+        // After NPC2 moves, NPC1's turn comes — NPC1 was in same initial group, so it is SKIPPED.
+        var rand = new FixedRaceRandomizer(order: [2, 1], dice: [1, 1]);
+        var sim = RaceSimulator.CreateWithPositions(
+            new Dictionary<int, List<int>> { [5] = [1, 2] },
+            mapLength: 20, rand);
+
+        var result = sim.SimulateRound();
+
+        // NPC2 moved (+1 → sq6), NPC1 was skipped (stays at sq5)
+        result.Actions.Should().HaveCount(1); // only NPC2 moved
+        result.Actions[0].NpcId.Should().Be(2);
+        result.SquareStacks["5"].Should().Equal([1]);
+        result.SquareStacks["6"].Should().Equal([2]);
+    }
 }

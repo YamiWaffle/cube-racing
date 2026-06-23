@@ -1,3 +1,4 @@
+using CubeRacing.Application.Config;
 using CubeRacing.Application.UseCases;
 using CubeRacing.Domain.Entities;
 using CubeRacing.Domain.Enums;
@@ -5,6 +6,7 @@ using CubeRacing.Infrastructure.Persistence;
 using CubeRacing.Infrastructure.Persistence.Repositories;
 using CubeRacing.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace CubeRacing.Tests.UseCases;
@@ -20,7 +22,8 @@ public class PlaceBetTests
         var hubMock = new Mock<CubeRacing.Application.Interfaces.IGameHubNotifier>();
         hubMock.Setup(h => h.NotifyOddsUpdatedAsync(It.IsAny<Guid>(), It.IsAny<object>()))
                .Returns(Task.CompletedTask);
-        var useCase = new PlaceBet(sessionRepo, betRepo, playerRepo, hubMock.Object);
+        var settings = Options.Create(new GameSettings());
+        var useCase = new PlaceBet(sessionRepo, betRepo, playerRepo, hubMock.Object, db, settings);
         return (useCase, db);
     }
 
@@ -104,5 +107,17 @@ public class PlaceBetTests
 
         result.Success.Should().BeFalse();
         result.Error.Should().Be(PlaceBetError.InvalidNpcId);
+    }
+
+    [Fact]
+    public async Task ZeroAmount_ReturnsInvalidAmountError()
+    {
+        var (sut, db) = BuildSut();
+        var (player, session) = await SeedAsync(db);
+
+        var result = await sut.ExecuteAsync(new PlaceBetRequest(player.Id, session.Id, 1, 0));
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be(PlaceBetError.InvalidAmount);
     }
 }
