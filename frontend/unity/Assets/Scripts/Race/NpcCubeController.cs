@@ -18,9 +18,7 @@ namespace CubeRacing
 
         public async UniTask MoveToAsync(Vector3 target, float duration)
         {
-            // Hop arc: move through a midpoint above, then land at target
-            var mid = (transform.position + target) * 0.5f + Vector3.up * 1.2f;
-            await transform.DOPath(new[] { mid, target }, duration, PathType.CatmullRom)
+            await transform.DOJump(target, jumpPower: 1.2f, numJumps: 1, duration: duration)
                            .SetEase(Ease.InOutSine)
                            .ToUniTask();
         }
