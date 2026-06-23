@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using TMPro;
@@ -46,9 +47,26 @@ namespace CubeRacing
 
         private async UniTaskVoid ContinueAsync(CancellationToken ct)
         {
-            _session.LoadFromPrefs();
-            _api.SetTokenProvider(() => _session.Token.ToString());
-            await LoadLobbyAsync(ct);
+            SetLoading(true);
+            try
+            {
+                _session.LoadFromPrefs();
+                _api.SetTokenProvider(() => _session.Token.ToString());
+                await LoadLobbyAsync(ct);
+            }
+            catch (Exception e)
+            {
+                _errorText.text = $"載入失敗，請重新登入：{e.Message}";
+                // Clear saved session so user can log in fresh
+                UnityEngine.PlayerPrefs.DeleteKey("player_token");
+                _loginButtonText.text = "登入";
+                _loginButton.onClick.RemoveAllListeners();
+                _loginButton.onClick.AddListener(() => LoginAsync(destroyCancellationToken).Forget());
+            }
+            finally
+            {
+                SetLoading(false);
+            }
         }
 
         private async UniTaskVoid LoginAsync(CancellationToken ct)
