@@ -15,17 +15,20 @@ namespace CubeRacing
         private const char Separator = '\x1e';
 
         private readonly string _url;
+        private readonly GameStateService                  _gameState;
         private readonly IPublisher<OddsUpdatedMessage>    _oddsPublisher;
         private readonly IPublisher<BettingEndedMessage>   _bettingEndedPublisher;
         private readonly IPublisher<RoundExecutedMessage>  _roundPublisher;
         private readonly IPublisher<RaceCompletedMessage>  _raceCompletedPublisher;
         private readonly IPublisher<SettlementDoneMessage> _settlementPublisher;
 
-        private ClientWebSocket        _ws;
-        private CancellationTokenSource _cts;
+        private ClientWebSocket          _ws;
+        private CancellationTokenSource  _cts;
+        private string                   _lastSessionId;
 
         public SignalRClient(
             string url,
+            GameStateService gameState,
             IPublisher<OddsUpdatedMessage>    oddsPublisher,
             IPublisher<BettingEndedMessage>   bettingEndedPublisher,
             IPublisher<RoundExecutedMessage>  roundPublisher,
@@ -33,6 +36,7 @@ namespace CubeRacing
             IPublisher<SettlementDoneMessage> settlementPublisher)
         {
             _url                    = url;
+            _gameState              = gameState;
             _oddsPublisher          = oddsPublisher;
             _bettingEndedPublisher  = bettingEndedPublisher;
             _roundPublisher         = roundPublisher;
@@ -56,6 +60,7 @@ namespace CubeRacing
 
         public async UniTask JoinSessionAsync(string sessionId, CancellationToken ct = default)
         {
+            _lastSessionId = sessionId;
             var msg = JsonConvert.SerializeObject(new
             {
                 type         = 1,
@@ -73,19 +78,47 @@ namespace CubeRacing
 
         private async UniTaskVoid ReceiveLoopAsync(CancellationToken ct)
         {
-            while (!ct.IsCancellationRequested && _ws?.State == WebSocketState.Open)
+            while (!ct.IsCancellationRequested)
             {
+                while (!ct.IsCancellationRequested && _ws?.State == WebSocketState.Open)
+                {
+                    try
+                    {
+                        var message = await ReceiveMessageAsync(ct);
+                        if (!string.IsNullOrWhiteSpace(message))
+                            ProcessMessage(message);
+                    }
+                    catch (OperationCanceledException) { return; }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"[SignalR] Receive error: {e.Message}");
+                        break;
+                    }
+                }
+
+                if (ct.IsCancellationRequested) return;
+
+                // Disconnected — attempt reconnect
+                _gameState.IsConnected.Value = false;
+                Debug.Log("[SignalR] Disconnected. Attempting reconnect...");
+                await UniTask.Delay(3000, cancellationToken: ct);
+
                 try
                 {
-                    var message = await ReceiveMessageAsync(ct);
-                    if (!string.IsNullOrWhiteSpace(message))
-                        ProcessMessage(message);
+                    _ws?.Dispose();
+                    _ws = new ClientWebSocket();
+                    await _ws.ConnectAsync(new Uri(_url), ct);
+                    await SendRawAsync($"{{\"protocol\":\"json\",\"version\":1}}{Separator}", ct);
+                    await ReceiveMessageAsync(ct); // discard handshake response
+                    if (!string.IsNullOrEmpty(_lastSessionId))
+                        await JoinSessionAsync(_lastSessionId, ct);
+                    _gameState.IsConnected.Value = true;
+                    Debug.Log("[SignalR] Reconnected.");
                 }
-                catch (OperationCanceledException) { break; }
+                catch (OperationCanceledException) { return; }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"[SignalR] Receive error: {e.Message}");
-                    break;
+                    Debug.LogWarning($"[SignalR] Reconnect failed: {e.Message}");
                 }
             }
         }

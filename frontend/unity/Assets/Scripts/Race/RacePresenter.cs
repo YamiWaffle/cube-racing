@@ -37,7 +37,8 @@ namespace CubeRacing
         private ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
 
-        private readonly CompositeDisposable _disposables = new();
+        private readonly CompositeDisposable          _disposables = new();
+        private readonly Queue<RoundExecutedPayload> _roundQueue  = new();
         private bool _animating = false;
 
         [Inject]
@@ -69,7 +70,11 @@ namespace CubeRacing
             _gameState.Status.Subscribe(s => _statusText.text = StatusToText(s)).AddTo(_disposables);
 
             _roundSubscriber.Subscribe(m =>
-                PlayRoundAsync(m.Payload, destroyCancellationToken).Forget()).AddTo(_disposables);
+            {
+                _roundQueue.Enqueue(m.Payload);
+                if (!_animating)
+                    DrainQueueAsync(destroyCancellationToken).Forget();
+            }).AddTo(_disposables);
 
             _raceCompletedSubscriber.Subscribe(m =>
                 ShowWinnerAsync(m.WinnerNpcId, destroyCancellationToken).Forget()).AddTo(_disposables);
@@ -78,11 +83,26 @@ namespace CubeRacing
                 ShowSettlement(m.Payload)).AddTo(_disposables);
         }
 
-        private async UniTaskVoid PlayRoundAsync(RoundExecutedPayload payload, CancellationToken ct)
+        private async UniTaskVoid DrainQueueAsync(CancellationToken ct)
+        {
+            _animating = true;
+            try
+            {
+                while (_roundQueue.Count > 0 && !ct.IsCancellationRequested)
+                {
+                    var payload = _roundQueue.Dequeue();
+                    await PlayRoundAsync(payload, ct);
+                }
+            }
+            finally
+            {
+                _animating = false;
+            }
+        }
+
+        private async UniTask PlayRoundAsync(RoundExecutedPayload payload, CancellationToken ct)
         {
             if (payload.actions == null || payload.actions.Count == 0) return;
-            if (_animating) return;
-            _animating = true;
 
             float durationPerAction = (GameSettings.RoundIntervalMs / 1000f * 0.8f)
                                       / payload.actions.Count;
@@ -95,17 +115,19 @@ namespace CubeRacing
                 if (_board.NpcCubes.TryGetValue(action.npcId, out var cube))
                     await cube.MoveToAsync(targetPos, durationPerAction);
 
-                // Move carried NPCs to same target (no animation — they're carried on top)
+                // Move carried NPCs to same target (no animation — stacked with offset)
+                int stackIdx = 1;
                 foreach (var carriedId in action.carriedNpcIds)
                 {
                     if (_board.NpcCubes.TryGetValue(carriedId, out var carried))
-                        carried.transform.position = targetPos + Vector3.up * 0.5f;
+                    {
+                        carried.transform.position = targetPos + Vector3.up * 0.5f * stackIdx;
+                        stackIdx++;
+                    }
                 }
 
                 await UniTask.Delay(50, cancellationToken: ct); // brief pause between actions
             }
-
-            _animating = false;
         }
 
         private async UniTaskVoid ShowWinnerAsync(int winnerNpcId, CancellationToken ct)

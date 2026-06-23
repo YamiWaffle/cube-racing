@@ -29,7 +29,6 @@ namespace CubeRacing
         private SignalRClient    _signalR;
         private GameStateService _gameState;
         private NpcConfig        _npcConfig;
-        private ISubscriber<OddsUpdatedMessage>    _oddsSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
 
         // Key: npcId — fixes the index-based lookup bug from the plan
@@ -41,7 +40,6 @@ namespace CubeRacing
         public void Construct(
             PlayerSession session, ApiClient api, SignalRClient signalR,
             GameStateService gameState, NpcConfig npcConfig,
-            ISubscriber<OddsUpdatedMessage> oddsSubscriber,
             ISubscriber<SettlementDoneMessage> settlementSubscriber)
         {
             _session              = session;
@@ -49,7 +47,6 @@ namespace CubeRacing
             _signalR              = signalR;
             _gameState            = gameState;
             _npcConfig            = npcConfig;
-            _oddsSubscriber       = oddsSubscriber;
             _settlementSubscriber = settlementSubscriber;
         }
 
@@ -63,7 +60,6 @@ namespace CubeRacing
             _gameState.Status.Subscribe(OnStatusChanged).AddTo(_disposables);
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
-            _oddsSubscriber.Subscribe(m => OnOddsChanged(m.Odds)).AddTo(_disposables);
             _settlementSubscriber.Subscribe(OnSettlementDone).AddTo(_disposables);
 
             InitAsync(destroyCancellationToken).Forget();
@@ -71,20 +67,38 @@ namespace CubeRacing
 
         private async UniTaskVoid InitAsync(CancellationToken ct)
         {
-            try
+            while (!ct.IsCancellationRequested)
             {
-                var session = await _api.GetCurrentSessionAsync(ct);
-                _gameState.ApplySession(session);
-
-                SpawnNpcCards(session.npcOdds);
-
-                await _signalR.ConnectAsync(ct);
-                await _signalR.JoinSessionAsync(session.sessionId.ToString(), ct);
-                _gameState.IsConnected.Value = true;
-            }
-            catch (Exception e)
-            {
-                _statusText.text = $"連線失敗：{e.Message}";
+                try
+                {
+                    var session = await _api.GetCurrentSessionAsync(ct);
+                    _gameState.ApplySession(session);
+                    SpawnNpcCards(session.npcOdds);
+                    await _signalR.ConnectAsync(ct);
+                    await _signalR.JoinSessionAsync(session.sessionId.ToString(), ct);
+                    _gameState.IsConnected.Value = true;
+                    return;
+                }
+                catch (ApiException ex) when (ex.StatusCode == 401)
+                {
+                    PlayerPrefs.DeleteKey("player_token");
+                    PlayerPrefs.DeleteKey("player_nickname");
+                    PlayerPrefs.DeleteKey("player_chips");
+                    PlayerPrefs.Save();
+                    await SceneManager.LoadSceneAsync("LoginScene").ToUniTask(cancellationToken: ct);
+                    return;
+                }
+                catch (ApiException ex) when (ex.StatusCode == 404)
+                {
+                    _statusText.text = "等待比賽建立...";
+                    await UniTask.Delay(5000, cancellationToken: ct);
+                }
+                catch (OperationCanceledException) { return; }
+                catch (Exception e)
+                {
+                    _statusText.text = $"連線失敗：{e.Message}";
+                    return;
+                }
             }
         }
 

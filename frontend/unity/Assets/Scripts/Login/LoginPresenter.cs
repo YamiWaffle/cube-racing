@@ -102,7 +102,12 @@ namespace CubeRacing
         private void SetLoading(bool loading)
         {
             _loginButton.interactable = !loading;
-            if (loading) _loginButtonText.text = "請稍候...";
+            if (loading)
+                _loginButtonText.text = "請稍候...";
+            else
+                _loginButtonText.text = _session.HasSavedSession
+                    ? $"繼續遊戲 ({_session.SavedChips:N0} 籌碼)"
+                    : "登入";
         }
     }
 }
