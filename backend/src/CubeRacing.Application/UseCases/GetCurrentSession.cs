@@ -34,9 +34,9 @@ public class GetCurrentSession
         var poolByNpc = allBets.GroupBy(b => b.NpcId).ToDictionary(g => g.Key, g => g.Sum(b => b.Amount));
         var npcOdds = Enumerable.Range(1, _settings.NpcCount).Select(id =>
         {
-            double? odds = poolByNpc.TryGetValue(id, out var pool) && pool > 0 && session.TotalPool > 0
+            double odds = poolByNpc.TryGetValue(id, out var pool) && pool > 0 && session.TotalPool > 0
                 ? (double)session.TotalPool / pool
-                : null;
+                : _settings.DefaultOdds;
             return new NpcOddsDto(id, odds);
         }).ToList();
 
