@@ -9,6 +9,7 @@ namespace CubeRacing
         {
             builder.RegisterComponentInHierarchy<LobbyPresenter>();
             builder.RegisterComponentInHierarchy<BettingDialogPresenter>();
+            builder.RegisterComponentInHierarchy<LeaderboardPresenter>();
         }
     }
 }
