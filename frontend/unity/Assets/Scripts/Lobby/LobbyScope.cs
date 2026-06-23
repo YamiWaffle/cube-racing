@@ -8,6 +8,7 @@ namespace CubeRacing
         protected override void Configure(IContainerBuilder builder)
         {
             builder.RegisterComponentInHierarchy<LobbyPresenter>();
+            builder.RegisterComponentInHierarchy<BettingDialogPresenter>();
         }
     }
 }
