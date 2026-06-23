@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CubeRacing.Application\CubeRacing.Application.csproj" />
     <ProjectReference Include="..\..\src\CubeRacing.Domain\CubeRacing.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CubeRacing.Infrastructure\CubeRacing.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
