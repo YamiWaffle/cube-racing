@@ -39,6 +39,11 @@ namespace CubeRacing
 
             // Config
             builder.RegisterInstance(_npcConfig);
+
+            // Scene management
+            builder.RegisterInstance<LifetimeScope>(this);
+            builder.Register<SceneLoader>(Lifetime.Singleton);
+            builder.RegisterComponentInHierarchy<AppBootstrapper>();
         }
     }
 }
