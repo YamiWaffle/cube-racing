@@ -7,7 +7,6 @@ using MessagePipe;
 using R3;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using VContainer;
 
@@ -36,6 +35,7 @@ namespace CubeRacing
         private ISubscriber<RoundExecutedMessage>  _roundSubscriber;
         private ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
+        private SceneLoader      _sceneLoader;
 
         private readonly CompositeDisposable          _disposables = new();
         private readonly Queue<RoundExecutedPayload> _roundQueue  = new();
@@ -47,7 +47,8 @@ namespace CubeRacing
             PlayerSession session, NpcConfig npcConfig,
             ISubscriber<RoundExecutedMessage>  roundSubscriber,
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
-            ISubscriber<SettlementDoneMessage> settlementSubscriber)
+            ISubscriber<SettlementDoneMessage> settlementSubscriber,
+            SceneLoader sceneLoader)
         {
             _board                   = board;
             _gameState               = gameState;
@@ -56,6 +57,7 @@ namespace CubeRacing
             _roundSubscriber         = roundSubscriber;
             _raceCompletedSubscriber = raceCompletedSubscriber;
             _settlementSubscriber    = settlementSubscriber;
+            _sceneLoader             = sceneLoader;
         }
 
         private void Start()
@@ -163,8 +165,7 @@ namespace CubeRacing
         }
 
         private void ReturnToLobby()
-            => SceneManager.LoadSceneAsync("LobbyScene")
-                           .ToUniTask(cancellationToken: destroyCancellationToken).Forget();
+            => _sceneLoader.LoadAsync("LobbyScene").Forget();
 
         private static string StatusToText(string status) => status switch
         {

@@ -3,7 +3,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using VContainer;
 
@@ -19,13 +18,16 @@ namespace CubeRacing
         private PlayerSession    _session;
         private ApiClient        _api;
         private GameStateService _gameState;
+        private SceneLoader      _sceneLoader;
 
         [Inject]
-        public void Construct(PlayerSession session, ApiClient api, GameStateService gameState)
+        public void Construct(PlayerSession session, ApiClient api,
+                              GameStateService gameState, SceneLoader sceneLoader)
         {
-            _session   = session;
-            _api       = api;
-            _gameState = gameState;
+            _session     = session;
+            _api         = api;
+            _gameState   = gameState;
+            _sceneLoader = sceneLoader;
         }
 
         private void Start()
@@ -52,19 +54,15 @@ namespace CubeRacing
             {
                 _session.LoadFromPrefs();
                 _api.SetTokenProvider(() => _session.Token.ToString());
-                await LoadLobbyAsync(ct);
+                _sceneLoader.LoadAsync("LobbyScene").Forget();
             }
             catch (Exception e)
             {
                 _errorText.text = $"Load failed, please log in again: {e.Message}";
-                // Clear saved session so user can log in fresh
-                UnityEngine.PlayerPrefs.DeleteKey("player_token");
+                PlayerPrefs.DeleteKey("player_token");
                 _loginButtonText.text = "Login";
                 _loginButton.onClick.RemoveAllListeners();
                 _loginButton.onClick.AddListener(() => LoginAsync(destroyCancellationToken).Forget());
-            }
-            finally
-            {
                 SetLoading(false);
             }
         }
@@ -84,20 +82,14 @@ namespace CubeRacing
                 var result = await _api.CreatePlayerAsync(nickname, ct);
                 _session.Initialize(result.playerId, result.token, nickname, result.chipsBalance);
                 _api.SetTokenProvider(() => _session.Token.ToString());
-                await LoadLobbyAsync(ct);
+                _sceneLoader.LoadAsync("LobbyScene").Forget();
             }
             catch (ApiException ex)
             {
                 _errorText.text = $"Login failed: {ex.ResponseBody}";
-            }
-            finally
-            {
                 SetLoading(false);
             }
         }
-
-        private static async UniTask LoadLobbyAsync(CancellationToken ct)
-            => await SceneManager.LoadSceneAsync("LobbyScene").ToUniTask(cancellationToken: ct);
 
         private void SetLoading(bool loading)
         {

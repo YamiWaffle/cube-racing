@@ -6,7 +6,6 @@ using MessagePipe;
 using R3;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using VContainer;
 
@@ -30,6 +29,7 @@ namespace CubeRacing
         private GameStateService _gameState;
         private NpcConfig        _npcConfig;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
+        private SceneLoader      _sceneLoader;
 
         // Key: npcId — fixes the index-based lookup bug from the plan
         private readonly Dictionary<int, NpcCardView> _cards        = new();
@@ -40,7 +40,8 @@ namespace CubeRacing
         public void Construct(
             PlayerSession session, ApiClient api, SignalRClient signalR,
             GameStateService gameState, NpcConfig npcConfig,
-            ISubscriber<SettlementDoneMessage> settlementSubscriber)
+            ISubscriber<SettlementDoneMessage> settlementSubscriber,
+            SceneLoader sceneLoader)
         {
             _session              = session;
             _api                  = api;
@@ -48,6 +49,7 @@ namespace CubeRacing
             _gameState            = gameState;
             _npcConfig            = npcConfig;
             _settlementSubscriber = settlementSubscriber;
+            _sceneLoader          = sceneLoader;
         }
 
         private void Start()
@@ -85,7 +87,7 @@ namespace CubeRacing
                     PlayerPrefs.DeleteKey("player_nickname");
                     PlayerPrefs.DeleteKey("player_chips");
                     PlayerPrefs.Save();
-                    await SceneManager.LoadSceneAsync("LoginScene").ToUniTask(cancellationToken: ct);
+                    _sceneLoader.LoadAsync("LoginScene").Forget();
                     return;
                 }
                 catch (ApiException ex) when (ex.StatusCode == 404)
@@ -165,7 +167,7 @@ namespace CubeRacing
         }
 
         private void OnWatchRaceClicked()
-            => SceneManager.LoadSceneAsync("RaceScene").ToUniTask(cancellationToken: destroyCancellationToken).Forget();
+            => _sceneLoader.LoadAsync("RaceScene").Forget();
 
         private void StartCountdown()
         {
