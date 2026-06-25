@@ -56,7 +56,7 @@ namespace CubeRacing
             _leaderboardButton.onClick.AddListener(() => _leaderboardPanel.Show(destroyCancellationToken).Forget());
 
             // Use _session.Chips (PlayerSession owns chip balance, not GameStateService)
-            _session.Chips.Subscribe(c => _chipsText.text = $"籌碼：{c:N0}").AddTo(_disposables);
+            _session.Chips.Subscribe(c => _chipsText.text = $"Chips: {c:N0}").AddTo(_disposables);
             _gameState.Status.Subscribe(OnStatusChanged).AddTo(_disposables);
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
@@ -90,13 +90,13 @@ namespace CubeRacing
                 }
                 catch (ApiException ex) when (ex.StatusCode == 404)
                 {
-                    _statusText.text = "等待比賽建立...";
+                    _statusText.text = "Waiting for session...";
                     await UniTask.Delay(5000, cancellationToken: ct);
                 }
                 catch (OperationCanceledException) { return; }
                 catch (Exception e)
                 {
-                    _statusText.text = $"連線失敗：{e.Message}";
+                    _statusText.text = $"Connection failed: {e.Message}";
                     return;
                 }
             }
@@ -121,11 +121,11 @@ namespace CubeRacing
         {
             _statusText.text = status switch
             {
-                "Waiting"   => "比賽準備中...",
-                "Betting"   => $"比賽將在 {_gameState.SecondsRemaining.Value ?? 0} 秒後開始",
-                "Racing"    => "比賽進行中",
-                "Settling"  => "結算中...",
-                "Completed" => $"{GetWinnerName()} 獲勝！",
+                "Waiting"   => "Preparing...",
+                "Betting"   => $"Betting closes in {_gameState.SecondsRemaining.Value ?? 0}s",
+                "Racing"    => "Race in progress",
+                "Settling"  => "Settling...",
+                "Completed" => $"{GetWinnerName()} wins!",
                 _           => status
             };
 
@@ -136,7 +136,7 @@ namespace CubeRacing
                 card.SetBettingEnabled(isBetting && !_gameState.HasPlacedBet.CurrentValue);
 
             _watchRaceButton.interactable = canWatch;
-            _watchRaceButtonText.text     = canWatch ? "觀看比賽" : "尚未開始";
+            _watchRaceButtonText.text     = canWatch ? "Watch Race" : "Not started";
 
             if (isBetting) StartCountdown();
             else StopCountdown();
@@ -180,7 +180,7 @@ namespace CubeRacing
         {
             while (!ct.IsCancellationRequested && (_gameState.SecondsRemaining.Value ?? 0) > 0)
             {
-                _statusText.text = $"比賽將在 {_gameState.SecondsRemaining.Value} 秒後開始";
+                _statusText.text = $"Betting closes in {_gameState.SecondsRemaining.Value}s";
                 _gameState.SecondsRemaining.Value--;
                 await UniTask.Delay(1000, cancellationToken: ct);
             }

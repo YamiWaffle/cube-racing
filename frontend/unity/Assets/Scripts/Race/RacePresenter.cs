@@ -66,7 +66,7 @@ namespace CubeRacing
             _backButton.onClick.AddListener(ReturnToLobby);
             _returnButton.onClick.AddListener(ReturnToLobby);
 
-            _session.Chips.Subscribe(c => _chipsText.text = $"籌碼：{c:N0}").AddTo(_disposables);
+            _session.Chips.Subscribe(c => _chipsText.text = $"Chips: {c:N0}").AddTo(_disposables);
             _gameState.Status.Subscribe(s => _statusText.text = StatusToText(s)).AddTo(_disposables);
 
             _roundSubscriber.Subscribe(m =>
@@ -133,7 +133,7 @@ namespace CubeRacing
         private async UniTaskVoid ShowWinnerAsync(int winnerNpcId, CancellationToken ct)
         {
             var entry = _npcConfig.GetById(winnerNpcId);
-            _winnerText.text = $"{entry?.npcName ?? winnerNpcId.ToString()} 獲勝！";
+            _winnerText.text = $"{entry?.npcName ?? winnerNpcId.ToString()} wins!";
             _winnerBanner.SetActive(true);
 
             // Punch scale on winner cube
@@ -150,12 +150,12 @@ namespace CubeRacing
             {
                 _session.UpdateChips(_session.Chips.CurrentValue + me.winAmount);
                 _settlementText.text = me.winAmount > 0
-                    ? $"🎉 恭喜！獲得 +{me.winAmount:N0} 籌碼"
-                    : "本局未中獎";
+                    ? $"You won +{me.winAmount:N0} chips!"
+                    : "No win this round";
             }
             else
             {
-                _settlementText.text = "未參與本局";
+                _settlementText.text = "No bet this round";
             }
 
             _settlementPanel.SetActive(true);
@@ -168,9 +168,9 @@ namespace CubeRacing
 
         private static string StatusToText(string status) => status switch
         {
-            "Racing"    => "比賽進行中",
-            "Settling"  => "結算中...",
-            "Completed" => "比賽結束",
+            "Racing"    => "Race in progress",
+            "Settling"  => "Settling...",
+            "Completed" => "Race over",
             _           => status
         };
 

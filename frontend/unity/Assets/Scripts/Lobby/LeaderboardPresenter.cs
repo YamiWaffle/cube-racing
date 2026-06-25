@@ -40,7 +40,7 @@ namespace CubeRacing
 
             List<LeaderboardEntry> entries;
             try { entries = await _api.GetLeaderboardAsync(ct); }
-            catch { _notRankedText.text = "載入失敗"; return; }
+            catch { _notRankedText.text = "Load failed"; return; }
 
             bool selfFound = false;
             for (int i = 0; i < entries.Count; i++)
@@ -58,7 +58,7 @@ namespace CubeRacing
             }
 
             if (!selfFound)
-                _notRankedText.text = "（你不在前 20 名）";
+                _notRankedText.text = "(Not in top 20)";
         }
 
         private void Hide() => _panel.SetActive(false);

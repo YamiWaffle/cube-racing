@@ -66,8 +66,8 @@ namespace CubeRacing
             _amount       = 0;
             _errorText.text = string.Empty;
 
-            _titleText.text = $"下注：{entry?.npcName ?? npcId.ToString()}";
-            _oddsText.text  = $"當前賠率：{_currentOdds:F1}x";
+            _titleText.text = $"Bet on: {entry?.npcName ?? npcId.ToString()}";
+            _oddsText.text  = $"Odds: {_currentOdds:F1}x";
             RefreshDisplay();
             _panel.SetActive(true);
 
@@ -97,9 +97,9 @@ namespace CubeRacing
 
         private void RefreshDisplay()
         {
-            _chipsText.text     = $"籌碼：{_session.Chips.CurrentValue:N0}";
+            _chipsText.text     = $"Chips: {_session.Chips.CurrentValue:N0}";
             _amountText.text    = _amount.ToString("N0");
-            _estimatedText.text = $"預計獲得：{(int)Math.Floor(_amount * _currentOdds):N0} 籌碼";
+            _estimatedText.text = $"Est. return: {(int)Math.Floor(_amount * _currentOdds):N0} chips";
             _confirmButton.interactable = _amount > 0;
         }
 
@@ -115,10 +115,10 @@ namespace CubeRacing
             }
             catch (ApiException ex)
             {
-                _errorText.text = ex.ResponseBody.Contains("already") ? "你已下注過本局"   :
-                                  ex.ResponseBody.Contains("chips")   ? "籌碼不足"         :
-                                  ex.ResponseBody.Contains("closed")  ? "下注時間已結束"   :
-                                  $"下注失敗：{ex.ResponseBody}";
+                _errorText.text = ex.ResponseBody.Contains("already") ? "Already bet this round"  :
+                                  ex.ResponseBody.Contains("chips")   ? "Insufficient chips"      :
+                                  ex.ResponseBody.Contains("closed")  ? "Betting closed"          :
+                                  $"Bet failed: {ex.ResponseBody}";
                 _confirmButton.interactable = _amount > 0;
             }
         }

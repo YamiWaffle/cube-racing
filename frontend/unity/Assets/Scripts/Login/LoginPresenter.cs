@@ -35,12 +35,12 @@ namespace CubeRacing
             if (_session.HasSavedSession)
             {
                 _nicknameInput.text   = _session.SavedNickname;
-                _loginButtonText.text = $"繼續遊戲 ({_session.SavedChips:N0} 籌碼)";
+                _loginButtonText.text = $"Continue ({_session.SavedChips:N0} chips)";
                 _loginButton.onClick.AddListener(() => ContinueAsync(destroyCancellationToken).Forget());
             }
             else
             {
-                _loginButtonText.text = "登入";
+                _loginButtonText.text = "Login";
                 _loginButton.onClick.AddListener(() => LoginAsync(destroyCancellationToken).Forget());
             }
         }
@@ -56,10 +56,10 @@ namespace CubeRacing
             }
             catch (Exception e)
             {
-                _errorText.text = $"載入失敗，請重新登入：{e.Message}";
+                _errorText.text = $"Load failed, please log in again: {e.Message}";
                 // Clear saved session so user can log in fresh
                 UnityEngine.PlayerPrefs.DeleteKey("player_token");
-                _loginButtonText.text = "登入";
+                _loginButtonText.text = "Login";
                 _loginButton.onClick.RemoveAllListeners();
                 _loginButton.onClick.AddListener(() => LoginAsync(destroyCancellationToken).Forget());
             }
@@ -74,7 +74,7 @@ namespace CubeRacing
             var nickname = _nicknameInput.text.Trim();
             if (string.IsNullOrEmpty(nickname))
             {
-                _errorText.text = "請輸入暱稱";
+                _errorText.text = "Please enter a nickname";
                 return;
             }
 
@@ -88,7 +88,7 @@ namespace CubeRacing
             }
             catch (ApiException ex)
             {
-                _errorText.text = $"登入失敗：{ex.ResponseBody}";
+                _errorText.text = $"Login failed: {ex.ResponseBody}";
             }
             finally
             {
@@ -103,11 +103,11 @@ namespace CubeRacing
         {
             _loginButton.interactable = !loading;
             if (loading)
-                _loginButtonText.text = "請稍候...";
+                _loginButtonText.text = "Please wait...";
             else
                 _loginButtonText.text = _session.HasSavedSession
-                    ? $"繼續遊戲 ({_session.SavedChips:N0} 籌碼)"
-                    : "登入";
+                    ? $"Continue ({_session.SavedChips:N0} chips)"
+                    : "Login";
         }
     }
 }

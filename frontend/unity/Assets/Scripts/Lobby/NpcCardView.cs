@@ -27,7 +27,7 @@ namespace CubeRacing
             _colorBlock.color   = entry.color;
             _nameText.text      = entry.npcName;
             _oddsText.text      = $"{odds:F1}x";
-            _betButtonText.text = "下注";
+            _betButtonText.text = "Bet";
         }
 
         public void UpdateOdds(double odds) => _oddsText.text = $"{odds:F1}x";
@@ -37,7 +37,7 @@ namespace CubeRacing
         public void SetBetPlaced(bool placed)
         {
             _betButton.interactable = false;
-            if (placed) _betButtonText.text = "已下注 ✓";
+            if (placed) _betButtonText.text = "Bet Placed";
         }
     }
 }

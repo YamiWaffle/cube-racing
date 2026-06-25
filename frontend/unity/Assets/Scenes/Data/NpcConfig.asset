@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CubeRacing.NpcConfig
   npcs:
   - id: 1
-    npcName: "\u7D05\u65B9\u584A"
+    npcName: red cube
     color: {r: 0.898, g: 0.243, b: 0.243, a: 1}
   - id: 2
-    npcName: "\u85CD\u65B9\u584A"
+    npcName: blue cube
     color: {r: 0.192, g: 0.506, b: 0.808, a: 1}
   - id: 3
-    npcName: "\u9EC3\u65B9\u584A"
+    npcName: yellow cube
     color: {r: 0.839, g: 0.62, b: 0.18, a: 1}
   - id: 4
-    npcName: "\u7DA0\u65B9\u584A"
+    npcName: green cube
     color: {r: 0.22, g: 0.631, b: 0.412, a: 1}
