@@ -16,40 +16,48 @@ public abstract class RabbitMqConsumerBase : BackgroundService
         _queue = queue;
     }
 
-    protected override Task ExecuteAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        await Task.Yield();
+
         var connection = _factory.CreateConnection();
         var channel = connection.CreateModel();
-        channel.QueueDeclare(_queue, durable: true, exclusive: false, autoDelete: false);
-        channel.BasicQos(0, 1, false);
-
-        var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.Received += async (_, ea) =>
+        try
         {
-            var body = Encoding.UTF8.GetString(ea.Body.ToArray());
-            int attempts = 0;
-            while (attempts < 3)
-            {
-                try
-                {
-                    await HandleAsync(body, ct);
-                    channel.BasicAck(ea.DeliveryTag, false);
-                    return;
-                }
-                catch
-                {
-                    attempts++;
-                    if (attempts < 3) await Task.Delay(1000, ct);
-                }
-            }
-            channel.BasicNack(ea.DeliveryTag, false, requeue: false);
-        };
-        channel.BasicConsume(_queue, autoAck: false, consumer);
+            channel.QueueDeclare(_queue, durable: true, exclusive: false, autoDelete: false);
+            channel.BasicQos(0, 1, false);
 
-        ct.WaitHandle.WaitOne();
-        channel.Dispose();
-        connection.Dispose();
-        return Task.CompletedTask;
+            var consumer = new AsyncEventingBasicConsumer(channel);
+            consumer.Received += async (_, ea) =>
+            {
+                var body = Encoding.UTF8.GetString(ea.Body.ToArray());
+                int attempts = 0;
+                while (attempts < 3)
+                {
+                    try
+                    {
+                        await HandleAsync(body, ct);
+                        channel.BasicAck(ea.DeliveryTag, false);
+                        return;
+                    }
+                    catch
+                    {
+                        attempts++;
+                        if (attempts < 3) await Task.Delay(1000, ct);
+                    }
+                }
+                channel.BasicNack(ea.DeliveryTag, false, requeue: false);
+            };
+            channel.BasicConsume(_queue, autoAck: false, consumer);
+
+            await Task.Delay(Timeout.Infinite, ct);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            channel.Dispose();
+            connection.Dispose();
+        }
     }
 
     protected abstract Task HandleAsync(string messageJson, CancellationToken ct);
