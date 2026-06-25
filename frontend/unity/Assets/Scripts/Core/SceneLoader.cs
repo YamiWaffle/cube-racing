@@ -13,8 +13,11 @@ namespace CubeRacing
 
         public async UniTask LoadAsync(string sceneName)
         {
-            if (_currentSubScene.IsValid())
-                await SceneManager.UnloadSceneAsync(_currentSubScene).ToUniTask();
+            var outgoing = _currentSubScene;
+            _currentSubScene = default;
+
+            if (outgoing.IsValid())
+                await SceneManager.UnloadSceneAsync(outgoing).ToUniTask();
 
             using (LifetimeScope.EnqueueParent(_mainScope))
                 await SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive).ToUniTask();
