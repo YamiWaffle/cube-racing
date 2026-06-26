@@ -64,7 +64,7 @@ namespace CubeRacing
         {
             _settlementPanel.SetActive(false);
             _winnerBanner.SetActive(false);
-            _backButton.interactable = false;
+            _backButton.interactable = true;
             _backButton.onClick.AddListener(ReturnToLobby);
             _returnButton.onClick.AddListener(ReturnToLobby);
 

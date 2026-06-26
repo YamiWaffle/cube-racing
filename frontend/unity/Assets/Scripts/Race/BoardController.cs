@@ -24,6 +24,10 @@ namespace CubeRacing
         {
             BuildPositions();
             SpawnTiles();
+        }
+
+        private void Start()
+        {
             SpawnNpcCubes();
         }
 

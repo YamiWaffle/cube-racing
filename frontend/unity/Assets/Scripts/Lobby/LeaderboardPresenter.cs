@@ -13,7 +13,7 @@ namespace CubeRacing
         [SerializeField] private Transform  _rowContainer;
         [SerializeField] private GameObject _rowPrefab;   // simple TMP_Text row
         [SerializeField] private TMP_Text   _notRankedText;
-        [SerializeField] private Button     _closeButton;
+        [SerializeField] private Button[]   _closeButtons;
 
         private ApiClient     _api;
         private PlayerSession _session;
@@ -27,7 +27,11 @@ namespace CubeRacing
 
         private void Awake()
         {
-            _closeButton.onClick.AddListener(Hide);
+            foreach (var closeButton in _closeButtons)
+            {
+                closeButton.onClick.AddListener(Hide);
+            }
+
             gameObject.SetActive(false);
         }
 
