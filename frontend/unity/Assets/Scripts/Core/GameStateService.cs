@@ -85,8 +85,8 @@ namespace CubeRacing
 
         public void SetBet(int npcId, int amount)
         {
-            BetNpcId.Value  = npcId;
             BetAmount.Value = amount;
+            BetNpcId.Value  = npcId;
         }
 
         public void Dispose() => _bag.Dispose();
