@@ -72,6 +72,18 @@ namespace CubeRacing
             _gameState.Status.Subscribe(OnStatusChanged).AddTo(_disposables);
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
+            _gameState.BetNpcId.Subscribe(npcId =>
+            {
+                foreach (var card in _cards.Values)
+                    card.ResetBetVisuals();
+
+                if (npcId.HasValue && _cards.TryGetValue(npcId.Value, out var betCard))
+                {
+                    betCard.SetBetHighlight(_gameState.BetAmount.CurrentValue ?? 0);
+                    foreach (var (id, card) in _cards)
+                        if (id != npcId.Value) card.SetGreyedOut(true);
+                }
+            }).AddTo(_disposables);
             _settlementSubscriber.Subscribe(OnSettlementDone).AddTo(_disposables);
 
             // Re-sync when a new betting round starts (backend broadcasts BettingStarted to all clients)

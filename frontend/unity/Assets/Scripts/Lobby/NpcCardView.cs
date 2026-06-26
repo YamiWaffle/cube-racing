@@ -13,6 +13,11 @@ namespace CubeRacing
         [SerializeField] private Button   _betButton;
         [SerializeField] private TMP_Text _betButtonText;
 
+        // Assigned in Unity Editor (added to prefab in Task 4 Step 4)
+        [SerializeField] private Image    _betBorder;
+        [SerializeField] private TMP_Text _betBadgeText;
+        [SerializeField] private Image    _greyOverlay;
+
         public event Action<int> OnBetClicked;
         private int _npcId;
 
@@ -38,6 +43,32 @@ namespace CubeRacing
         {
             _betButton.interactable = false;
             if (placed) _betButtonText.text = "Bet Placed";
+        }
+
+        public void SetBetHighlight(int amount)
+        {
+            if (_betBorder != null)
+                _betBorder.color = new Color(1f, 0.84f, 0f);   // gold
+            if (_betBadgeText != null)
+            {
+                _betBadgeText.text    = $"✓ Bet {amount:N0}";
+                _betBadgeText.gameObject.SetActive(true);
+            }
+        }
+
+        public void SetGreyedOut(bool greyed)
+        {
+            if (_greyOverlay != null)
+                _greyOverlay.gameObject.SetActive(greyed);
+        }
+
+        public void ResetBetVisuals()
+        {
+            if (_betBorder != null)
+                _betBorder.color = Color.clear;
+            if (_betBadgeText != null)
+                _betBadgeText.gameObject.SetActive(false);
+            SetGreyedOut(false);
         }
     }
 }

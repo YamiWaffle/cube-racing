@@ -15,6 +15,8 @@ namespace CubeRacing
         public ReactiveProperty<int?>          WinnerNpcId      { get; } = new(null);
         public ReactiveProperty<bool>          IsConnected      { get; } = new(false);
         public ReactiveProperty<DateTime?>     RaceStartsAt     { get; } = new(null);
+        public ReactiveProperty<int?>          BetNpcId         { get; } = new(null);
+        public ReactiveProperty<int?>          BetAmount        { get; } = new(null);
         public Guid CurrentSessionId { get; private set; }
         public int  MapLength        { get; private set; }
 
@@ -62,7 +64,11 @@ namespace CubeRacing
                 RaceStartsAt.Value = m.RaceStartsAt).AddTo(_bag);
 
             _bettingStartedSubscriber.Subscribe(_ =>
-                RaceStartsAt.Value = null).AddTo(_bag);
+            {
+                RaceStartsAt.Value = null;
+                BetNpcId.Value     = null;
+                BetAmount.Value    = null;
+            }).AddTo(_bag);
         }
 
         public void ApplySession(CurrentSessionResponse session)
@@ -75,6 +81,12 @@ namespace CubeRacing
             HasPlacedBet.Value     = false;
             WinnerNpcId.Value      = null;
             Status.Value           = session.status;
+        }
+
+        public void SetBet(int npcId, int amount)
+        {
+            BetNpcId.Value  = npcId;
+            BetAmount.Value = amount;
         }
 
         public void Dispose() => _bag.Dispose();
