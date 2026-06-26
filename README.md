@@ -22,10 +22,10 @@ Built as a learning project for .NET backend + Unity frontend integration.
 ## Game Flow
 
 ```
-[Waiting 5s] → [Betting 60s] → [Racing] → [Settling] → [Completed] → (repeat)
+[Waiting 5s] → [Betting 60s] → [30s pre-race countdown] → [Racing] → [Settling] → [Completed] → (repeat)
 ```
 
-4 NPC cubes (紅/藍/黃/綠方塊) race on a 20-square snake board. Players register, receive 1000 chips, and bet on any NPC during the betting window. Winnings are calculated via pari-mutuel odds.
+4 NPC cubes (紅/藍/黃/綠方塊) race on a 20-square snake board. Players register, receive 1000 chips, and bet on any NPC during the betting window. A 30-second countdown follows betting end so players can enter the race scene before rounds begin. Winnings are calculated via pari-mutuel odds.
 
 ---
 
@@ -125,10 +125,10 @@ Domain ← Application ← Infrastructure ← API
 ### RabbitMQ Pipeline
 
 ```
-betting.ended  →  BettingEndedConsumer   →  RaceSimulator  →  round.executed (×N)
-round.executed →  RoundExecutedConsumer  →  SignalR broadcast (RoundExecuted)
-race.completed →  RaceCompletedConsumer  →  SettleSession use case
-settlement.done → SettlementDoneConsumer →  ISessionCompletionSignal.Signal()
+betting.ended   → BettingEndedConsumer   → sets RaceStartsAt, broadcasts RaceStarting, waits 30s → RaceSimulator → round.executed (×N)
+round.executed  → RoundExecutedConsumer  → SignalR broadcast (RoundExecuted)
+race.completed  → RaceCompletedConsumer  → SettleSession use case
+settlement.done → SettlementDoneConsumer → ISessionCompletionSignal.Signal()
 ```
 
 All consumers: durable queues, `BasicQos(0,1,false)`, 3-attempt retry with 1s delay.
@@ -147,6 +147,17 @@ ProjectScope  (singleton: ApiClient, SignalRClient, GameStateService, PlayerSess
 ### Real-time Protocol
 
 SignalR over `ClientWebSocket`. Handshake: `{"protocol":"json","version":1}\x1e`. Messages are `\x1e`-delimited JSON. Ping frames (type=6) are consumed silently. Auto-reconnect: on disconnect, waits 3s then reconnects and re-joins the current session.
+
+**Server-to-client events:**
+
+| Event | Payload | When |
+|---|---|---|
+| `OddsUpdated` | `[{ npcId, odds }]` | Bet placed |
+| `BettingEnded` | — | Betting phase closes |
+| `RaceStarting` | `{ sessionId, raceStartsAt: DateTime }` | 30s before round 1 |
+| `RoundExecuted` | `{ roundNumber, actions, squareStacks, winner? }` | Each round |
+| `RaceCompleted` | `{ winnerNpcId }` | Race ends |
+| `SettlementDone` | `{ winnerNpcId, playerResults, topLeaderboard }` | Settlement complete |
 
 ### Settlement (Pari-Mutuel)
 
@@ -185,3 +196,9 @@ The same IDs and colors are mirrored in the Unity `NpcConfig` ScriptableObject (
 **Thread safety:** `RabbitMqPublisher` is a singleton; `IModel` access is guarded by `SemaphoreSlim(1,1)`. `ISessionCompletionSignal` uses `SemaphoreSlim(0,1)` with idempotent release.
 
 **CJK font:** `STHeitiMedium` (macOS system font) is imported as a TMP Dynamic Font Asset and added as a fallback to LiberationSans SDF, so Traditional Chinese renders without baking a full atlas.
+
+**Race start delay:** `BettingEndedConsumer` sets `ICurrentSessionStore.RaceStartsAt`, broadcasts `RaceStarting`, then `await Task.Delay(30s)` before running round 1. Frontend shows a countdown; late-joiners fall back to `GET /api/sessions/current` for the timestamp.
+
+**Step-by-step animation:** `PlayRoundAsync` DOJumps one square at a time. Stacked NPCs use Unity transform parent-child hierarchy — moving the bottom cube automatically drags all cubes above it. `_localStacks` is resynced from `payload.squareStacks` after every round; validation logs an error and snaps positions on mismatch.
+
+**Lobby bet indicator:** After placing a bet, the chosen NPC card gets a gold highlight and all others get a grey overlay. State lives in `GameStateService.BetNpcId`/`BetAmount`; `SetBet` must set `BetAmount` before `BetNpcId` because R3 fires subscribers synchronously.
