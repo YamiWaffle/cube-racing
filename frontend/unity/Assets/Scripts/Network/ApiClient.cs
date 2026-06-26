@@ -40,6 +40,9 @@ namespace CubeRacing
         public UniTask<List<LeaderboardEntry>> GetLeaderboardAsync(CancellationToken ct = default)
             => GetAsync<List<LeaderboardEntry>>("/api/leaderboard", ct);
 
+        public UniTask<Dictionary<string, List<int>>> GetCurrentSquaresAsync(CancellationToken ct = default)
+            => GetAsync<Dictionary<string, List<int>>>("/api/sessions/current/squares", ct);
+
         private async UniTask<T> GetAsync<T>(string path, CancellationToken ct)
         {
             using var req = UnityWebRequest.Get(_baseUrl + path);

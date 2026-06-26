@@ -32,6 +32,7 @@ namespace CubeRacing
         private GameStateService _gameState;
         private PlayerSession    _session;
         private NpcConfig        _npcConfig;
+        private ApiClient        _api;
         private ISubscriber<RoundExecutedMessage>  _roundSubscriber;
         private ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
@@ -44,7 +45,7 @@ namespace CubeRacing
         [Inject]
         public void Construct(
             BoardController board, GameStateService gameState,
-            PlayerSession session, NpcConfig npcConfig,
+            PlayerSession session, NpcConfig npcConfig, ApiClient api,
             ISubscriber<RoundExecutedMessage>  roundSubscriber,
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
             ISubscriber<SettlementDoneMessage> settlementSubscriber,
@@ -54,6 +55,7 @@ namespace CubeRacing
             _gameState               = gameState;
             _session                 = session;
             _npcConfig               = npcConfig;
+            _api                     = api;
             _roundSubscriber         = roundSubscriber;
             _raceCompletedSubscriber = raceCompletedSubscriber;
             _settlementSubscriber    = settlementSubscriber;
@@ -83,6 +85,36 @@ namespace CubeRacing
 
             _settlementSubscriber.Subscribe(m =>
                 ShowSettlement(m.Payload)).AddTo(_disposables);
+
+            SyncNpcPositionsAsync(destroyCancellationToken).Forget();
+        }
+
+        private async UniTaskVoid SyncNpcPositionsAsync(CancellationToken ct)
+        {
+            try
+            {
+                var stacks = await _api.GetCurrentSquaresAsync(ct);
+                ApplySquareStacks(stacks);
+            }
+            catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 404) { }
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogWarning($"[Race] Sync failed: {e.Message}"); }
+        }
+
+        private void ApplySquareStacks(Dictionary<string, List<int>> stacks)
+        {
+            if (stacks == null) return;
+            foreach (var (squareStr, npcIds) in stacks)
+            {
+                if (!int.TryParse(squareStr, out int sq)) continue;
+                var pos    = _board.GetSquarePosition(sq);
+                int offset = 0;
+                foreach (var npcId in npcIds)
+                {
+                    if (_board.NpcCubes.TryGetValue(npcId, out var cube))
+                        cube.transform.position = pos + Vector3.up * 0.5f * offset++;
+                }
+            }
         }
 
         private async UniTaskVoid DrainQueueAsync(CancellationToken ct)
