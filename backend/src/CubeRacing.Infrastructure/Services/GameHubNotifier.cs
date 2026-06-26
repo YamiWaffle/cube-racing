@@ -19,6 +19,10 @@ public class GameHubNotifier : IGameHubNotifier
     public Task NotifyBettingEndedAsync(Guid sessionId)
         => _hub.Clients.Group(sessionId.ToString()).SendAsync("BettingEnded");
 
+    public Task NotifyRaceStartingAsync(Guid sessionId, DateTime raceStartsAt)
+        => _hub.Clients.Group(sessionId.ToString())
+               .SendAsync("RaceStarting", new { sessionId, raceStartsAt });
+
     public Task NotifyRoundExecutedAsync(Guid sessionId, RoundExecutedEvent round)
         => _hub.Clients.Group(sessionId.ToString()).SendAsync("RoundExecuted", round);
 

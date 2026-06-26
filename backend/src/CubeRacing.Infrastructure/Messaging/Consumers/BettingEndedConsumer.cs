@@ -13,27 +13,33 @@ namespace CubeRacing.Infrastructure.Messaging.Consumers;
 
 public class BettingEndedConsumer : RabbitMqConsumerBase
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IMessagePublisher _publisher;
-    private readonly GameSettings _settings;
+    private readonly IServiceScopeFactory  _scopeFactory;
+    private readonly IMessagePublisher     _publisher;
+    private readonly ICurrentSessionStore  _store;
+    private readonly GameSettings          _settings;
 
-    public BettingEndedConsumer(IConnectionFactory factory, IServiceScopeFactory scopeFactory,
-        IMessagePublisher publisher, IOptions<GameSettings> settings)
+    public BettingEndedConsumer(
+        IConnectionFactory factory,
+        IServiceScopeFactory scopeFactory,
+        IMessagePublisher publisher,
+        ICurrentSessionStore store,
+        IOptions<GameSettings> settings)
         : base(factory, "betting.ended")
     {
         _scopeFactory = scopeFactory;
-        _publisher = publisher;
-        _settings = settings.Value;
+        _publisher    = publisher;
+        _store        = store;
+        _settings     = settings.Value;
     }
 
     protected override async Task HandleAsync(string json, CancellationToken ct)
     {
         var ev = JsonSerializer.Deserialize<BettingEndedEvent>(json)!;
 
-        using var scope = _scopeFactory.CreateScope();
-        var sessionRepo = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();
-        var roundRepo = scope.ServiceProvider.GetRequiredService<IGameRoundRepository>();
-        var hubNotifier = scope.ServiceProvider.GetRequiredService<IGameHubNotifier>();
+        using var scope      = _scopeFactory.CreateScope();
+        var sessionRepo      = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();
+        var roundRepo        = scope.ServiceProvider.GetRequiredService<IGameRoundRepository>();
+        var hubNotifier      = scope.ServiceProvider.GetRequiredService<IGameHubNotifier>();
 
         var session = await sessionRepo.GetByIdAsync(ev.SessionId, ct);
         if (session is null) return;
@@ -41,6 +47,12 @@ public class BettingEndedConsumer : RabbitMqConsumerBase
         session.StartRacing();
         await sessionRepo.UpdateAsync(session, ct);
         await hubNotifier.NotifyBettingEndedAsync(ev.SessionId);
+
+        // Compute and broadcast pre-race start time, then wait
+        var raceStartsAt = DateTime.UtcNow.AddSeconds(_settings.RaceStartDelaySeconds);
+        _store.RaceStartsAt = raceStartsAt;
+        await hubNotifier.NotifyRaceStartingAsync(ev.SessionId, raceStartsAt);
+        await Task.Delay(_settings.RaceStartDelaySeconds * 1000, ct);
 
         var simulator = new RaceSimulator(_settings.NpcCount, _settings.MapLength);
         int roundNumber = 0;
@@ -55,7 +67,8 @@ public class BettingEndedConsumer : RabbitMqConsumerBase
 
             var roundEvent = new RoundExecutedEvent(
                 ev.SessionId, roundNumber,
-                result.Actions.Select(a => new RoundActionDto(a.NpcId, a.DiceRoll, a.FromSquare, a.ToSquare, a.CarriedNpcIds)).ToList(),
+                result.Actions.Select(a => new RoundActionDto(
+                    a.NpcId, a.DiceRoll, a.FromSquare, a.ToSquare, a.CarriedNpcIds)).ToList(),
                 result.SquareStacks,
                 result.Winner);
 

@@ -39,6 +39,8 @@ public class GameSessionManager : BackgroundService
 
     private async Task RunSessionLifecycleAsync(CancellationToken ct)
     {
+        _store.RaceStartsAt = null;
+
         // Create session
         using var scope = _scopeFactory.CreateScope();
         var sessionRepo = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();

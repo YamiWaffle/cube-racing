@@ -44,6 +44,8 @@ public class GetCurrentSession
             ? Math.Max(0, (int)(session.BettingDeadline - DateTime.UtcNow).TotalSeconds)
             : null;
 
-        return new CurrentSessionDto(session.Id, session.Status.ToString(), remaining, npcOdds, session.MapLength);
+        return new CurrentSessionDto(
+            session.Id, session.Status.ToString(), remaining, npcOdds,
+            session.MapLength, _store.RaceStartsAt);
     }
 }
