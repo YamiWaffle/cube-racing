@@ -121,6 +121,7 @@ namespace CubeRacing
         private void StartCountdown(DateTime raceStartsAt)
         {
             _countdownCts?.Cancel();
+            _countdownCts?.Dispose();
             _countdownCts = new CancellationTokenSource();
             CountdownAsync(raceStartsAt, _countdownCts.Token).Forget();
         }
@@ -245,6 +246,7 @@ namespace CubeRacing
         private void OnDestroy()
         {
             _countdownCts?.Cancel();
+            _countdownCts?.Dispose();
             _disposables.Dispose();
         }
     }
