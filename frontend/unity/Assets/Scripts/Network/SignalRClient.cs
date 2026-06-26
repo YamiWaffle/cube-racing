@@ -17,6 +17,7 @@ namespace CubeRacing
         private readonly string _url;
         private readonly GameStateService                   _gameState;
         private readonly IPublisher<BettingStartedMessage>  _bettingStartedPublisher;
+        private readonly IPublisher<RaceStartingMessage>    _raceStartingPublisher;
         private readonly IPublisher<OddsUpdatedMessage>     _oddsPublisher;
         private readonly IPublisher<BettingEndedMessage>    _bettingEndedPublisher;
         private readonly IPublisher<RoundExecutedMessage>   _roundPublisher;
@@ -31,6 +32,7 @@ namespace CubeRacing
             string url,
             GameStateService gameState,
             IPublisher<BettingStartedMessage>  bettingStartedPublisher,
+            IPublisher<RaceStartingMessage>    raceStartingPublisher,
             IPublisher<OddsUpdatedMessage>     oddsPublisher,
             IPublisher<BettingEndedMessage>    bettingEndedPublisher,
             IPublisher<RoundExecutedMessage>   roundPublisher,
@@ -40,6 +42,7 @@ namespace CubeRacing
             _url                     = url;
             _gameState               = gameState;
             _bettingStartedPublisher = bettingStartedPublisher;
+            _raceStartingPublisher   = raceStartingPublisher;
             _oddsPublisher           = oddsPublisher;
             _bettingEndedPublisher   = bettingEndedPublisher;
             _roundPublisher          = roundPublisher;
@@ -151,6 +154,13 @@ namespace CubeRacing
                         {
                             case "BettingStarted":
                                 _bettingStartedPublisher.Publish(new BettingStartedMessage());
+                                break;
+                            case "RaceStarting":
+                                if (args?.Count > 0)
+                                {
+                                    var raceStartsAt = args[0]["raceStartsAt"].Value<DateTime>();
+                                    _raceStartingPublisher.Publish(new RaceStartingMessage(raceStartsAt));
+                                }
                                 break;
                             case "OddsUpdated":
                                 if (args?.Count > 0)

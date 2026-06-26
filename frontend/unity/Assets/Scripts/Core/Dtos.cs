@@ -27,6 +27,7 @@ namespace CubeRacing
         public int? bettingSecondsRemaining;
         public List<NpcOddsDto> npcOdds;
         public int mapLength;
+        public DateTime? raceStartsAt;
     }
 
     [Serializable]

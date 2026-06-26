@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CubeRacing
@@ -29,4 +30,10 @@ namespace CubeRacing
     }
 
     public readonly struct BettingStartedMessage { }
+
+    public readonly struct RaceStartingMessage
+    {
+        public readonly DateTime RaceStartsAt;
+        public RaceStartingMessage(DateTime raceStartsAt) => RaceStartsAt = raceStartsAt;
+    }
 }

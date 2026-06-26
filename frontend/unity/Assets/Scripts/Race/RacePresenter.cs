@@ -41,6 +41,7 @@ namespace CubeRacing
         private readonly CompositeDisposable          _disposables = new();
         private readonly Queue<RoundExecutedPayload> _roundQueue  = new();
         private bool _animating = false;
+        private CancellationTokenSource _countdownCts;
 
         [Inject]
         public void Construct(
@@ -87,6 +88,11 @@ namespace CubeRacing
                 ShowSettlement(m.Payload)).AddTo(_disposables);
 
             SyncNpcPositionsAsync(destroyCancellationToken).Forget();
+
+            _gameState.RaceStartsAt
+                .Where(t => t.HasValue && t.Value > DateTime.UtcNow)
+                .Subscribe(t => StartCountdown(t!.Value))
+                .AddTo(_disposables);
         }
 
         private async UniTaskVoid SyncNpcPositionsAsync(CancellationToken ct)
@@ -95,10 +101,39 @@ namespace CubeRacing
             {
                 var stacks = await _api.GetCurrentSquaresAsync(ct);
                 ApplySquareStacks(stacks);
+
+                if (_gameState.RaceStartsAt.Value == null)
+                {
+                    var session = await _api.GetCurrentSessionAsync(ct);
+                    if (session != null
+                        && session.raceStartsAt.HasValue
+                        && session.raceStartsAt.Value > DateTime.UtcNow)
+                    {
+                        _gameState.RaceStartsAt.Value = session.raceStartsAt.Value;
+                    }
+                }
             }
             catch (ApiException ex) when (ex.StatusCode == 204 || ex.StatusCode == 404) { }
             catch (OperationCanceledException) { }
             catch (Exception e) { Debug.LogWarning($"[Race] Sync failed: {e.Message}"); }
+        }
+
+        private void StartCountdown(DateTime raceStartsAt)
+        {
+            _countdownCts?.Cancel();
+            _countdownCts = new CancellationTokenSource();
+            CountdownAsync(raceStartsAt, _countdownCts.Token).Forget();
+        }
+
+        private async UniTaskVoid CountdownAsync(DateTime raceStartsAt, CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested && DateTime.UtcNow < raceStartsAt)
+            {
+                int remaining = Math.Max(0, (int)(raceStartsAt - DateTime.UtcNow).TotalSeconds);
+                _statusText.text = $"The racing will begin in {remaining} seconds....";
+                await UniTask.Delay(1000, cancellationToken: ct);
+            }
+            // Status text reverts to GameStateService.Status subscription once countdown ends
         }
 
         private void ApplySquareStacks(Dictionary<string, List<int>> stacks)
@@ -207,7 +242,11 @@ namespace CubeRacing
             _           => status
         };
 
-        private void OnDestroy() => _disposables.Dispose();
+        private void OnDestroy()
+        {
+            _countdownCts?.Cancel();
+            _disposables.Dispose();
+        }
     }
 
     // Expose RoundIntervalMs as a static constant so RacePresenter can use it

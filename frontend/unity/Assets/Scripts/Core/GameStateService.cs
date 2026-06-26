@@ -14,25 +14,32 @@ namespace CubeRacing
         public ReactiveProperty<bool>          HasPlacedBet     { get; } = new(false);
         public ReactiveProperty<int?>          WinnerNpcId      { get; } = new(null);
         public ReactiveProperty<bool>          IsConnected      { get; } = new(false);
+        public ReactiveProperty<DateTime?>     RaceStartsAt     { get; } = new(null);
         public Guid CurrentSessionId { get; private set; }
         public int  MapLength        { get; private set; }
 
-        private readonly ISubscriber<OddsUpdatedMessage>    _oddsSubscriber;
-        private readonly ISubscriber<BettingEndedMessage>   _bettingEndedSubscriber;
-        private readonly ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
-        private readonly ISubscriber<SettlementDoneMessage> _settlementSubscriber;
+        private readonly ISubscriber<OddsUpdatedMessage>     _oddsSubscriber;
+        private readonly ISubscriber<BettingEndedMessage>    _bettingEndedSubscriber;
+        private readonly ISubscriber<RaceCompletedMessage>   _raceCompletedSubscriber;
+        private readonly ISubscriber<SettlementDoneMessage>  _settlementSubscriber;
+        private readonly ISubscriber<RaceStartingMessage>    _raceStartingSubscriber;
+        private readonly ISubscriber<BettingStartedMessage>  _bettingStartedSubscriber;
         private readonly CompositeDisposable _bag = new();
 
         public GameStateService(
             ISubscriber<OddsUpdatedMessage>    oddsSubscriber,
             ISubscriber<BettingEndedMessage>   bettingEndedSubscriber,
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
-            ISubscriber<SettlementDoneMessage> settlementSubscriber)
+            ISubscriber<SettlementDoneMessage> settlementSubscriber,
+            ISubscriber<RaceStartingMessage>   raceStartingSubscriber,
+            ISubscriber<BettingStartedMessage> bettingStartedSubscriber)
         {
-            _oddsSubscriber          = oddsSubscriber;
-            _bettingEndedSubscriber  = bettingEndedSubscriber;
-            _raceCompletedSubscriber = raceCompletedSubscriber;
-            _settlementSubscriber    = settlementSubscriber;
+            _oddsSubscriber           = oddsSubscriber;
+            _bettingEndedSubscriber   = bettingEndedSubscriber;
+            _raceCompletedSubscriber  = raceCompletedSubscriber;
+            _settlementSubscriber     = settlementSubscriber;
+            _raceStartingSubscriber   = raceStartingSubscriber;
+            _bettingStartedSubscriber = bettingStartedSubscriber;
         }
 
         public void Initialize()
@@ -50,6 +57,12 @@ namespace CubeRacing
 
             _settlementSubscriber.Subscribe(_ =>
                 Status.Value = "Completed").AddTo(_bag);
+
+            _raceStartingSubscriber.Subscribe(m =>
+                RaceStartsAt.Value = m.RaceStartsAt).AddTo(_bag);
+
+            _bettingStartedSubscriber.Subscribe(_ =>
+                RaceStartsAt.Value = null).AddTo(_bag);
         }
 
         public void ApplySession(CurrentSessionResponse session)
