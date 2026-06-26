@@ -6,7 +6,7 @@ using VContainer.Unity;
 
 namespace CubeRacing
 {
-    public class GameStateService : IStartable, IDisposable
+    public class GameStateService : IDisposable
     {
         public ReactiveProperty<string>        Status           { get; } = new("Waiting");
         public ReactiveProperty<int?>          SecondsRemaining { get; } = new(null);
@@ -35,7 +35,7 @@ namespace CubeRacing
             _settlementSubscriber    = settlementSubscriber;
         }
 
-        public void Start()
+        public void Initialize()
         {
             _oddsSubscriber.Subscribe(m =>
                 NpcOdds.Value = m.Odds).AddTo(_bag);
@@ -44,12 +44,12 @@ namespace CubeRacing
                 Status.Value = "Racing").AddTo(_bag);
 
             _raceCompletedSubscriber.Subscribe(m => {
-                Status.Value      = "Completed";
+                Status.Value      = "Settling";
                 WinnerNpcId.Value = m.WinnerNpcId;
             }).AddTo(_bag);
 
             _settlementSubscriber.Subscribe(_ =>
-                Status.Value = "Settling").AddTo(_bag);
+                Status.Value = "Completed").AddTo(_bag);
         }
 
         public void ApplySession(CurrentSessionResponse session)

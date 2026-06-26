@@ -23,6 +23,7 @@ namespace CubeRacing
                 await SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive).ToUniTask();
 
             _currentSubScene = SceneManager.GetSceneByName(sceneName);
+            SceneManager.SetActiveScene(_currentSubScene);
         }
     }
 }

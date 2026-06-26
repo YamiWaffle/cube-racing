@@ -23,6 +23,9 @@ namespace CubeRacing
         [SerializeField] private BettingDialogPresenter  _bettingDialog;
         [SerializeField] private LeaderboardPresenter    _leaderboardPanel;
 
+        private bool _isStarted;
+        private bool _isInjected;
+        private bool _isInitialized;
         private PlayerSession    _session;
         private ApiClient        _api;
         private SignalRClient    _signalR;
@@ -50,6 +53,10 @@ namespace CubeRacing
             _npcConfig            = npcConfig;
             _settlementSubscriber = settlementSubscriber;
             _sceneLoader          = sceneLoader;
+
+            _isInjected = true;
+            
+            InitAsync(destroyCancellationToken).Forget();
         }
 
         private void Start()
@@ -63,12 +70,17 @@ namespace CubeRacing
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
             _settlementSubscriber.Subscribe(OnSettlementDone).AddTo(_disposables);
+            
+            _isStarted = true;
 
             InitAsync(destroyCancellationToken).Forget();
         }
 
         private async UniTaskVoid InitAsync(CancellationToken ct)
         {
+            if (_isInitialized || !_isInjected || !_isStarted)
+                return;
+            
             while (!ct.IsCancellationRequested)
             {
                 try
@@ -79,6 +91,7 @@ namespace CubeRacing
                     await _signalR.ConnectAsync(ct);
                     await _signalR.JoinSessionAsync(session.sessionId.ToString(), ct);
                     _gameState.IsConnected.Value = true;
+                    _isInitialized = true;
                     return;
                 }
                 catch (ApiException ex) when (ex.StatusCode == 401)
@@ -109,11 +122,14 @@ namespace CubeRacing
             foreach (Transform child in _npcCardsContainer) Destroy(child.gameObject);
             _cards.Clear();
 
+            bool canBet = _gameState.Status.CurrentValue == "Betting"
+                          && !_gameState.HasPlacedBet.CurrentValue;
             foreach (var entry in _npcConfig.npcs)
             {
                 var card    = Instantiate(_npcCardPrefab, _npcCardsContainer);
                 var npcOdds = odds?.Find(o => o.npcId == entry.id);
                 card.SetNpc(entry, npcOdds?.odds ?? 1.3);
+                card.SetBettingEnabled(canBet);
                 card.OnBetClicked += npcId => _bettingDialog.Show(npcId, destroyCancellationToken).Forget();
                 _cards[entry.id] = card;
             }

@@ -35,15 +35,14 @@ namespace CubeRacing
 
             // Core
             builder.Register<PlayerSession>(Lifetime.Singleton);
-            builder.RegisterEntryPoint<GameStateService>(Lifetime.Singleton);
+            builder.Register<GameStateService>(Lifetime.Singleton);
+            builder.RegisterEntryPoint<AppBootstrapper>();
 
             // Config
             builder.RegisterInstance(_npcConfig);
 
             // Scene management
-            builder.RegisterInstance<LifetimeScope>(this);
             builder.Register<SceneLoader>(Lifetime.Singleton);
-            builder.RegisterComponentInHierarchy<AppBootstrapper>();
         }
     }
 }

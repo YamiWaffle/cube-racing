@@ -1,17 +1,25 @@
 using Cysharp.Threading.Tasks;
-using UnityEngine;
 using VContainer;
+using VContainer.Unity;
 
 namespace CubeRacing
 {
-    public class AppBootstrapper : MonoBehaviour
+    public class AppBootstrapper : IStartable
     {
+        private GameStateService  _gameStateService;
         private SceneLoader _sceneLoader;
 
         [Inject]
-        public void Construct(SceneLoader sceneLoader) => _sceneLoader = sceneLoader;
+        public void Construct(GameStateService gameStateService, SceneLoader sceneLoader)
+        {
+            _gameStateService = gameStateService;
+            _sceneLoader = sceneLoader;
+        }
 
-        private void Start()
-            => _sceneLoader.LoadAsync("LoginScene").Forget();
+        public void Start()
+        {
+            _gameStateService.Initialize();
+            _sceneLoader.LoadAsync("LoginScene").Forget();
+        }
     }
 }

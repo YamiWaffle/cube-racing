@@ -10,7 +10,6 @@ namespace CubeRacing
 {
     public class BettingDialogPresenter : MonoBehaviour
     {
-        [SerializeField] private GameObject _panel;
         [SerializeField] private TMP_Text   _titleText;
         [SerializeField] private TMP_Text   _oddsText;
         [SerializeField] private TMP_Text   _chipsText;
@@ -30,7 +29,7 @@ namespace CubeRacing
         private ApiClient        _api;
         private GameStateService _gameState;
         private NpcConfig        _npcConfig;
-
+        
         private int    _currentNpcId;
         private double _currentOdds;
         private int    _amount;
@@ -54,7 +53,8 @@ namespace CubeRacing
             _clearButton.onClick.AddListener(Clear);
             _cancelButton.onClick.AddListener(Hide);
             _closeBackdropButton.onClick.AddListener(Hide);
-            _panel.SetActive(false);
+            
+            gameObject.SetActive(false);
         }
 
         public async UniTaskVoid Show(int npcId, CancellationToken ct)
@@ -69,13 +69,16 @@ namespace CubeRacing
             _titleText.text = $"Bet on: {entry?.npcName ?? npcId.ToString()}";
             _oddsText.text  = $"Odds: {_currentOdds:F1}x";
             RefreshDisplay();
-            _panel.SetActive(true);
+            gameObject.SetActive(true);
 
             _confirmButton.onClick.RemoveAllListeners();
             _confirmButton.onClick.AddListener(() => ConfirmAsync(ct).Forget());
         }
 
-        private void Hide() => _panel.SetActive(false);
+        private void Hide()
+        {
+            gameObject.SetActive(false);
+        }
 
         private void AddAmount(int delta)
         {

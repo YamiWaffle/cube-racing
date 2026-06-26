@@ -10,7 +10,6 @@ namespace CubeRacing
 {
     public class LeaderboardPresenter : MonoBehaviour
     {
-        [SerializeField] private GameObject _panel;
         [SerializeField] private Transform  _rowContainer;
         [SerializeField] private GameObject _rowPrefab;   // simple TMP_Text row
         [SerializeField] private TMP_Text   _notRankedText;
@@ -29,12 +28,13 @@ namespace CubeRacing
         private void Awake()
         {
             _closeButton.onClick.AddListener(Hide);
-            _panel.SetActive(false);
+            gameObject.SetActive(false);
         }
 
         public async UniTaskVoid Show(CancellationToken ct)
         {
-            _panel.SetActive(true);
+            gameObject.SetActive(true);
+            
             foreach (Transform child in _rowContainer) Destroy(child.gameObject);
             _notRankedText.text = string.Empty;
 
@@ -45,8 +45,8 @@ namespace CubeRacing
             bool selfFound = false;
             for (int i = 0; i < entries.Count; i++)
             {
-                var e    = entries[i];
-                var row  = Instantiate(_rowPrefab, _rowContainer);
+                var e = entries[i];
+                var row = Instantiate(_rowPrefab, _rowContainer);
                 var text = row.GetComponent<TMP_Text>();
                 text.text = $"#{i + 1}  {e.nickname}  {e.totalChipsWon:N0}";
 
@@ -61,6 +61,6 @@ namespace CubeRacing
                 _notRankedText.text = "(Not in top 20)";
         }
 
-        private void Hide() => _panel.SetActive(false);
+        private void Hide() => gameObject.SetActive(false);
     }
 }
