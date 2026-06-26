@@ -40,6 +40,7 @@ namespace CubeRacing
 
         private readonly CompositeDisposable          _disposables = new();
         private readonly Queue<RoundExecutedPayload> _roundQueue  = new();
+        private readonly Dictionary<int, List<int>> _localStacks = new();
         private bool _animating = false;
         private CancellationTokenSource _countdownCts;
 
@@ -140,15 +141,32 @@ namespace CubeRacing
         private void ApplySquareStacks(Dictionary<string, List<int>> stacks)
         {
             if (stacks == null) return;
+
+            foreach (var cube in _board.NpcCubes.Values)
+                cube.transform.SetParent(null);
+
+            _localStacks.Clear();
+
             foreach (var (squareStr, npcIds) in stacks)
             {
                 if (!int.TryParse(squareStr, out int sq)) continue;
-                var pos    = _board.GetSquarePosition(sq);
-                int offset = 0;
-                foreach (var npcId in npcIds)
+                _localStacks[sq] = new List<int>(npcIds);
+                var sqPos = _board.GetSquarePosition(sq);
+
+                for (int i = 0; i < npcIds.Count; i++)
                 {
-                    if (_board.NpcCubes.TryGetValue(npcId, out var cube))
-                        cube.transform.position = pos + Vector3.up * 0.5f * offset++;
+                    if (!_board.NpcCubes.TryGetValue(npcIds[i], out var cube)) continue;
+                    if (i == 0)
+                    {
+                        cube.transform.SetParent(null);
+                        cube.transform.position = sqPos + Vector3.up * 0.5f;
+                    }
+                    else
+                    {
+                        var below = _board.NpcCubes[npcIds[i - 1]];
+                        cube.transform.SetParent(below.transform);
+                        cube.transform.localPosition = Vector3.up * 0.5f;
+                    }
                 }
             }
         }
@@ -174,29 +192,91 @@ namespace CubeRacing
         {
             if (payload.actions == null || payload.actions.Count == 0) return;
 
-            float durationPerAction = (GameSettings.RoundIntervalMs / 1000f * 0.8f)
-                                      / payload.actions.Count;
+            float durationPerAction  = GameSettings.RoundIntervalMs / 1000f * 0.8f / payload.actions.Count;
+            bool  hadValidationError = false;
 
             foreach (var action in payload.actions)
             {
-                var targetPos = _board.GetSquarePosition(action.toSquare);
+                int steps = action.toSquare - action.fromSquare;
+                if (steps <= 0) continue;
 
-                // Move leader NPC
-                if (_board.NpcCubes.TryGetValue(action.npcId, out var cube))
-                    await cube.MoveToAsync(targetPos, durationPerAction);
+                float stepDuration = durationPerAction / steps;
 
-                // Move carried NPCs to same target (no animation — stacked with offset)
-                int stackIdx = 1;
-                foreach (var carriedId in action.carriedNpcIds)
+                if (!_board.NpcCubes.TryGetValue(action.npcId, out var movingCube)) continue;
+
+                // Remove the moving group from fromSquare tracking
+                if (_localStacks.TryGetValue(action.fromSquare, out var fromList))
                 {
-                    if (_board.NpcCubes.TryGetValue(carriedId, out var carried))
-                    {
-                        carried.transform.position = targetPos + Vector3.up * 0.5f * stackIdx;
-                        stackIdx++;
-                    }
+                    fromList.Remove(action.npcId);
+                    foreach (var cId in action.carriedNpcIds)
+                        fromList.Remove(cId);
                 }
 
-                await UniTask.Delay(50, cancellationToken: ct); // brief pause between actions
+                // De-parent the moving NPC; its carried descendants follow automatically
+                movingCube.transform.SetParent(null);
+
+                for (int sq = action.fromSquare + 1; sq <= action.toSquare; sq++)
+                {
+                    int stackCount  = _localStacks.TryGetValue(sq, out var existing) ? existing.Count : 0;
+                    var targetWorld = _board.GetSquarePosition(sq) + Vector3.up * (0.5f + stackCount * 0.5f);
+
+                    await movingCube.MoveToAsync(targetWorld, stepDuration, ct);
+
+                    if (stackCount > 0)
+                    {
+                        var topNpc = _board.NpcCubes[_localStacks[sq][^1]];
+                        movingCube.transform.SetParent(topNpc.transform);
+                    }
+
+                    if (sq != action.toSquare)
+                        movingCube.transform.SetParent(null);
+                }
+
+                // Update tracking with final position
+                if (!_localStacks.TryGetValue(action.toSquare, out var toList))
+                    _localStacks[action.toSquare] = toList = new List<int>();
+                toList.Add(action.npcId);
+                toList.AddRange(action.carriedNpcIds);
+
+                // Validate descendants match carriedNpcIds
+                var actualDescendants = GetAllDescendantIds(action.npcId);
+                var expectedSet       = new HashSet<int>(action.carriedNpcIds);
+                var actualSet         = new HashSet<int>(actualDescendants);
+                if (!expectedSet.SetEquals(actualSet))
+                {
+                    Debug.LogError($"[Race] Stack mismatch NPC {action.npcId}. " +
+                                   $"Expected: [{string.Join(",", expectedSet)}] " +
+                                   $"Actual: [{string.Join(",", actualSet)}]");
+                    hadValidationError = true;
+                }
+            }
+
+            // Re-sync _localStacks from authoritative backend data
+            _localStacks.Clear();
+            foreach (var (k, v) in payload.squareStacks)
+                if (int.TryParse(k, out int sq))
+                    _localStacks[sq] = new List<int>(v);
+
+            // Snap positions if validation detected drift
+            if (hadValidationError)
+                ApplySquareStacks(payload.squareStacks);
+        }
+
+        private List<int> GetAllDescendantIds(int npcId)
+        {
+            var result = new List<int>();
+            if (_board.NpcCubes.TryGetValue(npcId, out var cube))
+                CollectDescendants(cube.transform, result);
+            return result;
+        }
+
+        private static void CollectDescendants(Transform t, List<int> result)
+        {
+            foreach (Transform child in t)
+            {
+                var ctrl = child.GetComponent<NpcCubeController>();
+                if (ctrl != null) result.Add(ctrl.NpcId);
+                CollectDescendants(child, result);
             }
         }
 
