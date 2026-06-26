@@ -163,7 +163,7 @@ namespace CubeRacing
                     }
                     else
                     {
-                        var below = _board.NpcCubes[npcIds[i - 1]];
+                        if (!_board.NpcCubes.TryGetValue(npcIds[i - 1], out var below)) continue;
                         cube.transform.SetParent(below.transform);
                         cube.transform.localPosition = Vector3.up * 0.5f;
                     }
@@ -222,11 +222,8 @@ namespace CubeRacing
 
                     await movingCube.MoveToAsync(targetWorld, stepDuration, ct);
 
-                    if (stackCount > 0)
-                    {
-                        var topNpc = _board.NpcCubes[_localStacks[sq][^1]];
+                    if (stackCount > 0 && _board.NpcCubes.TryGetValue(_localStacks[sq][^1], out var topNpc))
                         movingCube.transform.SetParent(topNpc.transform);
-                    }
 
                     if (sq != action.toSquare)
                         movingCube.transform.SetParent(null);
