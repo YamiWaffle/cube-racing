@@ -113,6 +113,7 @@ namespace CubeRacing
             try
             {
                 await _api.PlaceBetAsync(_gameState.CurrentSessionId, _currentNpcId, _amount, ct);
+                _session.UpdateChips(_session.Chips.CurrentValue - _amount);
                 _gameState.HasPlacedBet.Value = true;
                 Hide();
             }

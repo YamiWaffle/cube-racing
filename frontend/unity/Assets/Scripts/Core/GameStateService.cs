@@ -56,11 +56,12 @@ namespace CubeRacing
         {
             CurrentSessionId       = session.sessionId;
             MapLength              = session.mapLength;
-            Status.Value           = session.status;
+            // Set all data before Status so that OnStatusChanged subscribers read correct values
             SecondsRemaining.Value = session.bettingSecondsRemaining;
             NpcOdds.Value          = session.npcOdds ?? new();
             HasPlacedBet.Value     = false;
             WinnerNpcId.Value      = null;
+            Status.Value           = session.status;
         }
 
         public void Dispose() => _bag.Dispose();
