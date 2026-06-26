@@ -15,12 +15,13 @@ namespace CubeRacing
         private const char Separator = '\x1e';
 
         private readonly string _url;
-        private readonly GameStateService                  _gameState;
-        private readonly IPublisher<OddsUpdatedMessage>    _oddsPublisher;
-        private readonly IPublisher<BettingEndedMessage>   _bettingEndedPublisher;
-        private readonly IPublisher<RoundExecutedMessage>  _roundPublisher;
-        private readonly IPublisher<RaceCompletedMessage>  _raceCompletedPublisher;
-        private readonly IPublisher<SettlementDoneMessage> _settlementPublisher;
+        private readonly GameStateService                   _gameState;
+        private readonly IPublisher<BettingStartedMessage>  _bettingStartedPublisher;
+        private readonly IPublisher<OddsUpdatedMessage>     _oddsPublisher;
+        private readonly IPublisher<BettingEndedMessage>    _bettingEndedPublisher;
+        private readonly IPublisher<RoundExecutedMessage>   _roundPublisher;
+        private readonly IPublisher<RaceCompletedMessage>   _raceCompletedPublisher;
+        private readonly IPublisher<SettlementDoneMessage>  _settlementPublisher;
 
         private ClientWebSocket          _ws;
         private CancellationTokenSource  _cts;
@@ -29,19 +30,21 @@ namespace CubeRacing
         public SignalRClient(
             string url,
             GameStateService gameState,
-            IPublisher<OddsUpdatedMessage>    oddsPublisher,
-            IPublisher<BettingEndedMessage>   bettingEndedPublisher,
-            IPublisher<RoundExecutedMessage>  roundPublisher,
-            IPublisher<RaceCompletedMessage>  raceCompletedPublisher,
-            IPublisher<SettlementDoneMessage> settlementPublisher)
+            IPublisher<BettingStartedMessage>  bettingStartedPublisher,
+            IPublisher<OddsUpdatedMessage>     oddsPublisher,
+            IPublisher<BettingEndedMessage>    bettingEndedPublisher,
+            IPublisher<RoundExecutedMessage>   roundPublisher,
+            IPublisher<RaceCompletedMessage>   raceCompletedPublisher,
+            IPublisher<SettlementDoneMessage>  settlementPublisher)
         {
-            _url                    = url;
-            _gameState              = gameState;
-            _oddsPublisher          = oddsPublisher;
-            _bettingEndedPublisher  = bettingEndedPublisher;
-            _roundPublisher         = roundPublisher;
-            _raceCompletedPublisher = raceCompletedPublisher;
-            _settlementPublisher    = settlementPublisher;
+            _url                     = url;
+            _gameState               = gameState;
+            _bettingStartedPublisher = bettingStartedPublisher;
+            _oddsPublisher           = oddsPublisher;
+            _bettingEndedPublisher   = bettingEndedPublisher;
+            _roundPublisher          = roundPublisher;
+            _raceCompletedPublisher  = raceCompletedPublisher;
+            _settlementPublisher     = settlementPublisher;
         }
 
         public async UniTask ConnectAsync(CancellationToken ct = default)
@@ -143,28 +146,34 @@ namespace CubeRacing
                     {
                         var target = obj["target"]?.Value<string>();
                         var args   = obj["arguments"] as JArray;
-                        if (args == null || args.Count == 0) continue;
 
                         switch (target)
                         {
+                            case "BettingStarted":
+                                _bettingStartedPublisher.Publish(new BettingStartedMessage());
+                                break;
                             case "OddsUpdated":
-                                _oddsPublisher.Publish(new OddsUpdatedMessage(
-                                    args[0].ToObject<System.Collections.Generic.List<NpcOddsDto>>()));
+                                if (args?.Count > 0)
+                                    _oddsPublisher.Publish(new OddsUpdatedMessage(
+                                        args[0].ToObject<System.Collections.Generic.List<NpcOddsDto>>()));
                                 break;
                             case "BettingEnded":
                                 _bettingEndedPublisher.Publish(new BettingEndedMessage());
                                 break;
                             case "RoundExecuted":
-                                _roundPublisher.Publish(new RoundExecutedMessage(
-                                    args[0].ToObject<RoundExecutedPayload>()));
+                                if (args?.Count > 0)
+                                    _roundPublisher.Publish(new RoundExecutedMessage(
+                                        args[0].ToObject<RoundExecutedPayload>()));
                                 break;
                             case "RaceCompleted":
-                                _raceCompletedPublisher.Publish(new RaceCompletedMessage(
-                                    args[0]["winnerNpcId"].Value<int>()));
+                                if (args?.Count > 0)
+                                    _raceCompletedPublisher.Publish(new RaceCompletedMessage(
+                                        args[0]["winnerNpcId"].Value<int>()));
                                 break;
                             case "SettlementDone":
-                                _settlementPublisher.Publish(new SettlementDoneMessage(
-                                    args[0].ToObject<SettlementDonePayload>()));
+                                if (args?.Count > 0)
+                                    _settlementPublisher.Publish(new SettlementDoneMessage(
+                                        args[0].ToObject<SettlementDonePayload>()));
                                 break;
                         }
                     }

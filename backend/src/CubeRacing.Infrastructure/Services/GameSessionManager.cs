@@ -14,15 +14,18 @@ public class GameSessionManager : BackgroundService
     private readonly ICurrentSessionStore _store;
     private readonly IMessagePublisher _publisher;
     private readonly ISessionCompletionSignal _signal;
+    private readonly IGameHubNotifier _hubNotifier;
     private readonly GameSettings _settings;
 
     public GameSessionManager(IServiceScopeFactory scopeFactory, ICurrentSessionStore store,
-        IMessagePublisher publisher, ISessionCompletionSignal signal, IOptions<GameSettings> settings)
+        IMessagePublisher publisher, ISessionCompletionSignal signal,
+        IGameHubNotifier hubNotifier, IOptions<GameSettings> settings)
     {
         _scopeFactory = scopeFactory;
         _store = store;
         _publisher = publisher;
         _signal = signal;
+        _hubNotifier = hubNotifier;
         _settings = settings.Value;
     }
 
@@ -50,6 +53,7 @@ public class GameSessionManager : BackgroundService
         // Betting phase
         session.StartBetting(_settings.BettingDurationSeconds);
         await sessionRepo.UpdateAsync(session, ct);
+        await _hubNotifier.NotifyBettingStartedAsync(session.Id);
 
         var remaining = session.BettingDeadline - DateTime.UtcNow;
         if (remaining > TimeSpan.Zero)

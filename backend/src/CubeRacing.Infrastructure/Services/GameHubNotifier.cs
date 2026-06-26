@@ -10,6 +10,9 @@ public class GameHubNotifier : IGameHubNotifier
     private readonly IHubContext<GameHub> _hub;
     public GameHubNotifier(IHubContext<GameHub> hub) => _hub = hub;
 
+    public Task NotifyBettingStartedAsync(Guid sessionId)
+        => _hub.Clients.All.SendAsync("BettingStarted", new { sessionId });
+
     public Task NotifyOddsUpdatedAsync(Guid sessionId, object odds)
         => _hub.Clients.Group(sessionId.ToString()).SendAsync("OddsUpdated", odds);
 

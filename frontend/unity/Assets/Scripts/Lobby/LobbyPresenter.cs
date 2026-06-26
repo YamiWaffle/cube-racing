@@ -31,7 +31,8 @@ namespace CubeRacing
         private SignalRClient    _signalR;
         private GameStateService _gameState;
         private NpcConfig        _npcConfig;
-        private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
+        private ISubscriber<BettingStartedMessage>  _bettingStartedSubscriber;
+        private ISubscriber<SettlementDoneMessage>  _settlementSubscriber;
         private SceneLoader      _sceneLoader;
 
         // Key: npcId — fixes the index-based lookup bug from the plan
@@ -43,19 +44,21 @@ namespace CubeRacing
         public void Construct(
             PlayerSession session, ApiClient api, SignalRClient signalR,
             GameStateService gameState, NpcConfig npcConfig,
-            ISubscriber<SettlementDoneMessage> settlementSubscriber,
+            ISubscriber<BettingStartedMessage>  bettingStartedSubscriber,
+            ISubscriber<SettlementDoneMessage>  settlementSubscriber,
             SceneLoader sceneLoader)
         {
-            _session              = session;
-            _api                  = api;
-            _signalR              = signalR;
-            _gameState            = gameState;
-            _npcConfig            = npcConfig;
-            _settlementSubscriber = settlementSubscriber;
-            _sceneLoader          = sceneLoader;
+            _session                  = session;
+            _api                      = api;
+            _signalR                  = signalR;
+            _gameState                = gameState;
+            _npcConfig                = npcConfig;
+            _bettingStartedSubscriber = bettingStartedSubscriber;
+            _settlementSubscriber     = settlementSubscriber;
+            _sceneLoader              = sceneLoader;
 
             _isInjected = true;
-            
+
             InitAsync(destroyCancellationToken).Forget();
         }
 
@@ -70,7 +73,19 @@ namespace CubeRacing
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
             _settlementSubscriber.Subscribe(OnSettlementDone).AddTo(_disposables);
-            
+
+            // Re-sync when a new betting round starts (backend broadcasts BettingStarted to all clients)
+            _bettingStartedSubscriber
+                .Subscribe(_ => ResyncSessionAsync(destroyCancellationToken).Forget())
+                .AddTo(_disposables);
+
+            // Re-sync after SignalR reconnect (may have missed events during disconnect)
+            _gameState.IsConnected
+                .Where(v => v)
+                .Skip(1)
+                .Subscribe(_ => ResyncSessionAsync(destroyCancellationToken).Forget())
+                .AddTo(_disposables);
+
             _isStarted = true;
 
             InitAsync(destroyCancellationToken).Forget();
@@ -80,7 +95,7 @@ namespace CubeRacing
         {
             if (_isInitialized || !_isInjected || !_isStarted)
                 return;
-            
+
             while (!ct.IsCancellationRequested)
             {
                 try
@@ -88,6 +103,16 @@ namespace CubeRacing
                     var session = await _api.GetCurrentSessionAsync(ct);
                     _gameState.ApplySession(session);
                     SpawnNpcCards(session.npcOdds);
+
+                    // Poll until session leaves Waiting phase — no SignalR events during Waiting
+                    while (!ct.IsCancellationRequested && session.status == "Waiting")
+                    {
+                        await UniTask.Delay(3000, cancellationToken: ct);
+                        session = await _api.GetCurrentSessionAsync(ct);
+                        _gameState.ApplySession(session);
+                    }
+                    if (ct.IsCancellationRequested) return;
+
                     await _signalR.ConnectAsync(ct);
                     await _signalR.JoinSessionAsync(session.sessionId.ToString(), ct);
                     _gameState.IsConnected.Value = true;
@@ -115,6 +140,20 @@ namespace CubeRacing
                     return;
                 }
             }
+        }
+
+        private async UniTaskVoid ResyncSessionAsync(CancellationToken ct)
+        {
+            try
+            {
+                var session = await _api.GetCurrentSessionAsync(ct);
+                _gameState.ApplySession(session);
+                SpawnNpcCards(session.npcOdds);
+                await _signalR.JoinSessionAsync(session.sessionId.ToString(), ct);
+            }
+            catch (ApiException ex) when (ex.StatusCode == 404) { }
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogWarning($"[Lobby] Resync failed: {e.Message}"); }
         }
 
         private void SpawnNpcCards(List<NpcOddsDto> odds)

@@ -27,4 +27,6 @@ namespace CubeRacing
         public readonly SettlementDonePayload Payload;
         public SettlementDoneMessage(SettlementDonePayload payload) => Payload = payload;
     }
+
+    public readonly struct BettingStartedMessage { }
 }
