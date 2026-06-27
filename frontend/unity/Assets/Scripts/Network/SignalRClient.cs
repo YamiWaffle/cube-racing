@@ -52,14 +52,18 @@ namespace CubeRacing
 
         public async UniTask ConnectAsync(CancellationToken ct = default)
         {
-            _ws  = new ClientWebSocket();
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _ws = new ClientWebSocket();
 
-            var uri = new Uri(_url);
-            await _ws.ConnectAsync(uri, _cts.Token);
+            // _cts is scene-independent: only Disconnect()/Dispose() should stop the receive loop.
+            // Using a linked CTS tied to the caller's destroyCancellationToken would kill the loop
+            // on scene transition, leaving RacePresenter deaf to all subsequent SignalR events.
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
 
-            await SendRawAsync($"{{\"protocol\":\"json\",\"version\":1}}{Separator}", _cts.Token);
-            await ReceiveMessageAsync(_cts.Token); // discard handshake response
+            await _ws.ConnectAsync(new Uri(_url), ct);
+            await SendRawAsync($"{{\"protocol\":\"json\",\"version\":1}}{Separator}", ct);
+            await ReceiveMessageAsync(ct); // discard handshake response
 
             ReceiveLoopAsync(_cts.Token).Forget();
         }
