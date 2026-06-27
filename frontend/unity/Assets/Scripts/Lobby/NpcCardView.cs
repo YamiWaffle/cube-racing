@@ -13,7 +13,6 @@ namespace CubeRacing
         [SerializeField] private Button   _betButton;
         [SerializeField] private TMP_Text _betButtonText;
 
-        // Assigned in Unity Editor (added to prefab in Task 4 Step 4)
         [SerializeField] private Image    _betBorder;
         [SerializeField] private TMP_Text _betBadgeText;
         [SerializeField] private Image    _greyOverlay;
@@ -24,6 +23,20 @@ namespace CubeRacing
         private void Awake()
         {
             _betButton.onClick.AddListener(() => OnBetClicked?.Invoke(_npcId));
+
+            // BetBorder, GreyOverlay, and BetBadge use absolute anchor positioning to overlay the card.
+            // Without ignoreLayout = true they are subject to the parent VerticalLayoutGroup,
+            // which overrides their positions and makes them invisible or misplaced.
+            ExcludeFromLayout(_betBorder?.gameObject);
+            ExcludeFromLayout(_greyOverlay?.gameObject);
+            ExcludeFromLayout(_betBadgeText?.gameObject);
+        }
+
+        private static void ExcludeFromLayout(GameObject go)
+        {
+            if (go == null) return;
+            var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
+            le.ignoreLayout = true;
         }
 
         public void SetNpc(NpcEntry entry, double odds)

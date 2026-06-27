@@ -44,6 +44,7 @@ namespace CubeRacing
         private readonly Dictionary<int, List<int>> _localStacks = new();
         private bool _animating = false;
         private CancellationTokenSource _countdownCts;
+        private SettlementDonePayload _pendingSettlement;
 
         [Inject]
         public void Construct(
@@ -89,7 +90,12 @@ namespace CubeRacing
                 ShowWinnerAsync(m.WinnerNpcId, destroyCancellationToken).Forget()).AddTo(_disposables);
 
             _settlementSubscriber.Subscribe(m =>
-                ShowSettlement(m.Payload)).AddTo(_disposables);
+            {
+                if (!_animating)
+                    ShowSettlement(m.Payload);
+                else
+                    _pendingSettlement = m.Payload;
+            }).AddTo(_disposables);
 
             SyncNpcPositionsAsync(destroyCancellationToken).Forget();
 
@@ -188,6 +194,11 @@ namespace CubeRacing
             finally
             {
                 _animating = false;
+                if (_pendingSettlement != null)
+                {
+                    ShowSettlement(_pendingSettlement);
+                    _pendingSettlement = null;
+                }
             }
         }
 
