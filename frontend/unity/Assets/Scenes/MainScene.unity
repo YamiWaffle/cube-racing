@@ -153,6 +153,7 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _npcConfig: {fileID: 11400000, guid: 22eece0610bea449bb3f58d2f0216ed3, type: 2}
+  _raceConfig: {fileID: 11400000, guid: 04b14184c8020407fb51b3beece6d8b7, type: 2}
 --- !u!4 &136200909
 Transform:
   m_ObjectHideFlags: 0
