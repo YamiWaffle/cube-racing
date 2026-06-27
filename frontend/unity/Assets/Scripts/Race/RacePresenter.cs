@@ -33,6 +33,7 @@ namespace CubeRacing
         private PlayerSession    _session;
         private NpcConfig        _npcConfig;
         private ApiClient        _api;
+        private RaceConfig       _raceConfig;
         private ISubscriber<RoundExecutedMessage>  _roundSubscriber;
         private ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
@@ -48,6 +49,7 @@ namespace CubeRacing
         public void Construct(
             BoardController board, GameStateService gameState,
             PlayerSession session, NpcConfig npcConfig, ApiClient api,
+            RaceConfig raceConfig,
             ISubscriber<RoundExecutedMessage>  roundSubscriber,
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
             ISubscriber<SettlementDoneMessage> settlementSubscriber,
@@ -58,6 +60,7 @@ namespace CubeRacing
             _session                 = session;
             _npcConfig               = npcConfig;
             _api                     = api;
+            _raceConfig              = raceConfig;
             _roundSubscriber         = roundSubscriber;
             _raceCompletedSubscriber = raceCompletedSubscriber;
             _settlementSubscriber    = settlementSubscriber;
@@ -192,15 +195,12 @@ namespace CubeRacing
         {
             if (payload.actions == null || payload.actions.Count == 0) return;
 
-            float durationPerAction  = GameSettings.RoundIntervalMs / 1000f * 0.8f / payload.actions.Count;
-            bool  hadValidationError = false;
+            bool hadValidationError = false;
 
             foreach (var action in payload.actions)
             {
                 int steps = action.toSquare - action.fromSquare;
                 if (steps <= 0) continue;
-
-                float stepDuration = durationPerAction / steps;
 
                 if (!_board.NpcCubes.TryGetValue(action.npcId, out var movingCube)) continue;
 
@@ -220,7 +220,7 @@ namespace CubeRacing
                     int stackCount  = _localStacks.TryGetValue(sq, out var existing) ? existing.Count : 0;
                     var targetWorld = _board.GetSquarePosition(sq) + Vector3.up * (0.5f + stackCount * 0.5f);
 
-                    await movingCube.MoveToAsync(targetWorld, stepDuration, ct);
+                    await movingCube.MoveToAsync(targetWorld, _raceConfig.stepDuration, ct);
 
                     if (stackCount > 0 && _board.NpcCubes.TryGetValue(_localStacks[sq][^1], out var topNpc))
                         movingCube.transform.SetParent(topNpc.transform);
@@ -326,12 +326,5 @@ namespace CubeRacing
             _countdownCts?.Dispose();
             _disposables.Dispose();
         }
-    }
-
-    // Expose RoundIntervalMs as a static constant so RacePresenter can use it
-    // without referencing the backend's GameSettings class.
-    internal static class GameSettings
-    {
-        public const int RoundIntervalMs = 1500;
     }
 }

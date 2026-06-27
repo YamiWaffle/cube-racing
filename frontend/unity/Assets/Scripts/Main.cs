@@ -8,10 +8,11 @@ namespace CubeRacing
 {
     public class Main : LifetimeScope
     {
-        private const string ApiBaseUrl  = "http://localhost:5062";
-        private const string SignalRUrl  = "ws://localhost:5062/hubs/game";
+        private const string ApiBaseUrl = "http://localhost:5062";
+        private const string SignalRUrl = "ws://localhost:5062/hubs/game";
 
-        [SerializeField] private NpcConfig _npcConfig;
+        [SerializeField] private NpcConfig  _npcConfig;
+        [SerializeField] private RaceConfig _raceConfig;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -19,10 +20,12 @@ namespace CubeRacing
 
             if (_npcConfig == null)
                 throw new System.InvalidOperationException("[Main] NpcConfig is not assigned in the Inspector.");
+            if (_raceConfig == null)
+                throw new System.InvalidOperationException("[Main] RaceConfig is not assigned in the Inspector.");
 
             // MessagePipe
             builder.RegisterMessagePipe();
-            
+
             // Setup GlobalMessagePipe to enable diagnostics window and global function
             builder.RegisterBuildCallback(c =>
                 GlobalMessagePipe.SetProvider(c.AsServiceProvider()));
@@ -40,6 +43,7 @@ namespace CubeRacing
 
             // Config
             builder.RegisterInstance(_npcConfig);
+            builder.RegisterInstance(_raceConfig);
 
             // Scene management
             builder.Register<SceneLoader>(Lifetime.Singleton);
