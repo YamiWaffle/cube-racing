@@ -44,6 +44,7 @@ namespace CubeRacing
         private readonly Dictionary<int, List<int>> _localStacks = new();
         private bool _animating = false;
         private CancellationTokenSource _countdownCts;
+        private int? _pendingWinnerNpcId;
         private SettlementDonePayload _pendingSettlement;
 
         [Inject]
@@ -87,7 +88,12 @@ namespace CubeRacing
             }).AddTo(_disposables);
 
             _raceCompletedSubscriber.Subscribe(m =>
-                ShowWinnerAsync(m.WinnerNpcId, destroyCancellationToken).Forget()).AddTo(_disposables);
+            {
+                if (!_animating)
+                    ShowWinnerAsync(m.WinnerNpcId, destroyCancellationToken).Forget();
+                else
+                    _pendingWinnerNpcId = m.WinnerNpcId;
+            }).AddTo(_disposables);
 
             _settlementSubscriber.Subscribe(m =>
             {
@@ -194,6 +200,11 @@ namespace CubeRacing
             finally
             {
                 _animating = false;
+                if (_pendingWinnerNpcId.HasValue)
+                {
+                    ShowWinnerAsync(_pendingWinnerNpcId.Value, destroyCancellationToken).Forget();
+                    _pendingWinnerNpcId = null;
+                }
                 if (_pendingSettlement != null)
                 {
                     ShowSettlement(_pendingSettlement);
