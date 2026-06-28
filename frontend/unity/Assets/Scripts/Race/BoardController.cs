@@ -10,7 +10,8 @@ namespace CubeRacing
         [SerializeField] private GameObject _npcCubePrefab;
         [SerializeField] private float      _tileSpacing = 2.2f;
 
-        private NpcConfig _npcConfig;
+        private NpcConfig  _npcConfig;
+        private RaceConfig _raceConfig;
 
         // Tile positions indexed 1–20
         private readonly Vector3[] _positions = new Vector3[21];
@@ -18,7 +19,11 @@ namespace CubeRacing
         public Dictionary<int, NpcCubeController> NpcCubes { get; } = new();
 
         [Inject]
-        public void Construct(NpcConfig npcConfig) => _npcConfig = npcConfig;
+        public void Construct(NpcConfig npcConfig, RaceConfig raceConfig)
+        {
+            _npcConfig  = npcConfig;
+            _raceConfig = raceConfig;
+        }
 
         private void Awake()
         {
@@ -83,12 +88,12 @@ namespace CubeRacing
         {
             Vector3 startPos = _positions[1];
             int     count    = _npcConfig.npcs.Length;
+            float   h        = _raceConfig.npcHeight;
 
             for (int i = 0; i < count; i++)
             {
                 var entry  = _npcConfig.npcs[i];
-                // Offset slightly so stacked cubes are visible
-                Vector3 offset = new Vector3(i * 0.25f - (count - 1) * 0.125f, i * 0.5f + 0.5f, 0f);
+                Vector3 offset = new Vector3(i * (h * 0.5f) - (count - 1) * (h * 0.25f), i * h + h, 0f);
                 var cube = Instantiate(_npcCubePrefab, startPos + offset, Quaternion.identity, transform);
                 cube.name = $"Npc_{entry.id}";
 
