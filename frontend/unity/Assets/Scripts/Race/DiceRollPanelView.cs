@@ -16,18 +16,52 @@ namespace CubeRacing
         [SerializeField] private float          _shuffleDuration = 0.15f;
         [SerializeField] private float          _settleDuration  = 0.4f;
 
+        // Cached once after the first UIShowAsync, when the panel is visible and the
+        // LayoutGroup has computed real positions in sibling order 0,1,2,…
+        // Reused every round so we are never reading scrambled post-settle positions.
+        private Vector2[] _canonicalPositions;
+        private readonly Dictionary<int, int> _npcIdToSlotMap = new();
+
         public async UniTask ShowAsync(
             NpcConfig npcConfig,
             int[] npcOrder,
             Dictionary<int, int> npcDice,
             CancellationToken cancellationToken)
         {
+            // Round 2+: snap slots back to canonical order while the panel is still
+            // hidden so the user never sees the scrambled state from the previous round.
+            if (_canonicalPositions != null)
+            {
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    _slots[i].transform.SetSiblingIndex(i);
+                    ((RectTransform)_slots[i].transform).anchoredPosition = _canonicalPositions[i];
+                }
+            }
+
             await UIShowAsync(cancellationToken: cancellationToken);
 
-            for (int i = 0; i < _slots.Length; i++)
-                _slots[i].Setup(npcConfig.npcs[i]);
+            // Round 1: panel is now visible and the LayoutGroup has done its first
+            // layout pass — read and cache canonical positions for all future rounds.
+            if (_canonicalPositions == null)
+            {
+                var lg = GetComponent<LayoutGroup>();
+                if (lg != null) lg.enabled = true;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
+                _canonicalPositions = new Vector2[_slots.Length];
+                for (int i = 0; i < _slots.Length; i++)
+                    _canonicalPositions[i] = ((RectTransform)_slots[i].transform).anchoredPosition;
+                if (lg != null) lg.enabled = false;
+            }
 
-            await ShuffleOrderAsync(npcConfig, npcOrder, cancellationToken);
+            _npcIdToSlotMap.Clear();
+            for (int i = 0; i < _slots.Length && i < npcConfig.npcs.Length; i++)
+            {
+                _slots[i].Setup(npcConfig.npcs[i]);
+                _npcIdToSlotMap[npcConfig.npcs[i].id] = i;
+            }
+
+            await ShuffleOrderAsync(npcOrder, cancellationToken);
 
             var tasks = new UniTask[_slots.Length];
             for (int i = 0; i < _slots.Length; i++)
@@ -47,30 +81,12 @@ namespace CubeRacing
             await UIHideAsync(cancellationToken: cancellationToken);
         }
 
-        private async UniTask ShuffleOrderAsync(
-            NpcConfig npcConfig, int[] npcOrder, CancellationToken ct)
+        private async UniTask ShuffleOrderAsync(int[] npcOrder, CancellationToken ct)
         {
-            // 讓 LayoutGroup 算好初始位置後讀取，再暫停讓我們手動控制
-            var layoutGroup = GetComponent<LayoutGroup>();
-            if (layoutGroup != null) layoutGroup.enabled = true;
-            LayoutRebuilder.ForceRebuildLayoutImmediate(RectTransform);
-
-            var panelPositions = new Vector2[_slots.Length];
-            for (int i = 0; i < _slots.Length; i++)
-                panelPositions[i] = ((RectTransform)_slots[i].transform).anchoredPosition;
-
-            if (layoutGroup != null) layoutGroup.enabled = false;
-
-            // npcId → slot index（_slots[i] 對應 npcConfig.npcs[i]）
-            var npcToSlot = new Dictionary<int, int>();
-            for (int i = 0; i < npcConfig.npcs.Length; i++)
-                npcToSlot[npcConfig.npcs[i].id] = i;
-
-            // 追蹤目前每個位置放的 slot
+            // Slots are guaranteed to be at _canonicalPositions[i] when this runs.
             var posToSlot = Enumerable.Range(0, _slots.Length).ToArray();
             var slotToPos = Enumerable.Range(0, _slots.Length).ToArray();
 
-            // 隨機 pair swap × _shuffleSteps
             var rng = new System.Random();
             for (int s = 0; s < _shuffleSteps; s++)
             {
@@ -80,28 +96,26 @@ namespace CubeRacing
                 int slot2 = posToSlot[p2];
 
                 await UniTask.WhenAll(
-                    _slots[slot1].SlideToAsync(panelPositions[p2], _shuffleDuration, ct),
-                    _slots[slot2].SlideToAsync(panelPositions[p1], _shuffleDuration, ct));
+                    _slots[slot1].SlideToAsync(_canonicalPositions[p2], _shuffleDuration, ct),
+                    _slots[slot2].SlideToAsync(_canonicalPositions[p1], _shuffleDuration, ct));
 
                 posToSlot[p1] = slot2; posToSlot[p2] = slot1;
                 slotToPos[slot1] = p2; slotToPos[slot2] = p1;
             }
 
-            // 所有 slot 同時滑到最終目標位置
             var settleTasks = new UniTask[_slots.Length];
             var assignedSlots = new HashSet<int>();
-            for (int p = 0; p < npcOrder.Length && p < _slots.Length; p++)
+            for (int i = 0; i < npcOrder.Length && i < _slots.Length; i++)
             {
-                if (!npcToSlot.TryGetValue(npcOrder[p], out int slotIdx)) continue;
-                _slots[slotIdx].transform.SetSiblingIndex(p);
-                settleTasks[slotIdx] = _slots[slotIdx].SlideToAsync(panelPositions[p], _settleDuration, ct);
+                if (!_npcIdToSlotMap.TryGetValue(npcOrder[i], out int slotIdx)) continue;
+                _slots[slotIdx].transform.SetSiblingIndex(i);
+                settleTasks[slotIdx] = _slots[slotIdx].SlideToAsync(_canonicalPositions[i], _settleDuration, ct);
                 assignedSlots.Add(slotIdx);
             }
-            // Return finished-NPC slots to their identity positions
             for (int i = 0; i < _slots.Length; i++)
             {
                 if (!assignedSlots.Contains(i))
-                    settleTasks[i] = _slots[i].SlideToAsync(panelPositions[i], _settleDuration, ct);
+                    settleTasks[i] = _slots[i].SlideToAsync(_canonicalPositions[i], _settleDuration, ct);
             }
             await UniTask.WhenAll(settleTasks);
         }

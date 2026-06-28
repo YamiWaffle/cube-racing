@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace CubeRacing
 {
-    public class DiceSlotView : MonoBehaviour
+    public class DiceSlotView : UIBehaviour
     {
         [SerializeField] private Image    _colorBlock;
         [SerializeField] private TMP_Text _nameText;
@@ -40,7 +40,9 @@ namespace CubeRacing
 
         public UniTask SlideToAsync(Vector2 targetAnchoredPos, float duration, CancellationToken ct)
         {
-            return ((RectTransform)transform)
+            RectTransform.DOKill();
+            
+            return RectTransform
                 .DOAnchorPos(targetAnchoredPos, duration)
                 .SetEase(Ease.InOutSine)
                 .ToUniTask(cancellationToken: ct);

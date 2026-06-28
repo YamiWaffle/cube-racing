@@ -50,6 +50,7 @@ namespace CubeRacing
         private readonly Queue<RoundExecutedPayload> _roundQueue  = new();
         private readonly Dictionary<int, List<int>> _localStacks = new();
         private bool _animating = false;
+        private UniTask _initialSyncTask = UniTask.CompletedTask;
         private CancellationTokenSource _countdownCts;
         private int? _pendingWinnerNpcId;
         private SettlementDonePayload _pendingSettlement;
@@ -113,7 +114,7 @@ namespace CubeRacing
                     _pendingSettlement = m.Payload;
             }).AddTo(_disposables);
 
-            SyncNpcPositionsAsync(destroyCancellationToken).Forget();
+            _initialSyncTask = SyncNpcPositionsAsync(destroyCancellationToken);
 
             _gameState.RaceStartsAt
                 .Where(t => t.HasValue && t.Value > DateTime.UtcNow)
@@ -121,7 +122,7 @@ namespace CubeRacing
                 .AddTo(_disposables);
         }
 
-        private async UniTaskVoid SyncNpcPositionsAsync(CancellationToken ct)
+        private async UniTask SyncNpcPositionsAsync(CancellationToken ct)
         {
             try
             {
@@ -199,6 +200,7 @@ namespace CubeRacing
         private async UniTaskVoid DrainQueueAsync(CancellationToken ct)
         {
             _animating = true;
+            await _initialSyncTask;
             try
             {
                 while (_roundQueue.Count > 0 && !ct.IsCancellationRequested)

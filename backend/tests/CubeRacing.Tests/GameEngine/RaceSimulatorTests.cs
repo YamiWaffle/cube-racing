@@ -7,10 +7,10 @@ namespace CubeRacing.Tests.GameEngine;
 public class RaceSimulatorTests
 {
     [Fact]
-    public void AllNpcsStartAtSquareZero()
+    public void AllNpcsStartNotAtSquareZero()
     {
         var sim = new RaceSimulator(4, 20);
-        sim.GetSquareStacks()["0"].Should().HaveCount(4);
+        sim.GetSquareStacks().Should().BeEmpty();
     }
 
     [Fact]
@@ -23,8 +23,8 @@ public class RaceSimulatorTests
 
         result.Actions.Should().HaveCount(1);
         result.Actions[0].NpcId.Should().Be(1);
-        result.Actions[0].FromSquare.Should().Be(0);
-        result.Actions[0].ToSquare.Should().Be(2);
+        result.Actions[0].FromSquare.Should().Be(-1);
+        result.Actions[0].ToSquare.Should().Be(1);
         result.Actions[0].DiceRoll.Should().Be(2);
     }
 
@@ -105,14 +105,14 @@ public class RaceSimulatorTests
     [Fact]
     public void NpcDoesNotExceedFinishSquare()
     {
-        var rand = new FixedRaceRandomizer(order: [1], dice: [3]);
+        var rand = new FixedRaceRandomizer(order: [1], dice: [5]);
         var sim = RaceSimulator.CreateWithPositions(
-            new Dictionary<int, List<int>> { [19] = [1] },
+            new Dictionary<int, List<int>> { [16] = [1] },
             mapLength: 20, rand);
 
         var result = sim.SimulateRound();
 
-        result.Actions[0].ToSquare.Should().Be(20);
+        result.Actions[0].ToSquare.Should().Be(19);
     }
 
     [Fact]
