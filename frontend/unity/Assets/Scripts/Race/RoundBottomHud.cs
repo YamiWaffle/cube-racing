@@ -19,13 +19,21 @@ namespace CubeRacing
         {
             _npcOrder = npcOrder;
             gameObject.SetActive(true);
-            for (int i = 0; i < _slots.Length && i < npcOrder.Length; i++)
+            for (int i = 0; i < _slots.Length; i++)
             {
-                var entry = _npcConfig.GetById(npcOrder[i]);
-                if (entry == null) continue;
-                int? steps = npcSteps.TryGetValue(npcOrder[i], out int s) ? s : (int?)null;
-                _slots[i].Setup(entry, steps);
-                _slots[i].SetActive(false);
+                if (i < npcOrder.Length)
+                {
+                    _slots[i].gameObject.SetActive(true);
+                    var entry = _npcConfig.GetById(npcOrder[i]);
+                    if (entry == null) continue;
+                    int? steps = npcSteps.TryGetValue(npcOrder[i], out int s) ? s : (int?)null;
+                    _slots[i].Setup(entry, steps);
+                    _slots[i].SetActive(false);
+                }
+                else
+                {
+                    _slots[i].gameObject.SetActive(false);
+                }
             }
         }
 

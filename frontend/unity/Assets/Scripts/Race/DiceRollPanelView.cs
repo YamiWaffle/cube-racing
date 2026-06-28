@@ -89,12 +89,19 @@ namespace CubeRacing
 
             // 所有 slot 同時滑到最終目標位置
             var settleTasks = new UniTask[_slots.Length];
+            var assignedSlots = new HashSet<int>();
             for (int p = 0; p < npcOrder.Length && p < _slots.Length; p++)
             {
                 if (!npcToSlot.TryGetValue(npcOrder[p], out int slotIdx)) continue;
                 _slots[slotIdx].transform.SetSiblingIndex(p);
-                settleTasks[slotIdx] =
-                    _slots[slotIdx].SlideToAsync(panelPositions[p], _settleDuration, ct);
+                settleTasks[slotIdx] = _slots[slotIdx].SlideToAsync(panelPositions[p], _settleDuration, ct);
+                assignedSlots.Add(slotIdx);
+            }
+            // Return finished-NPC slots to their identity positions
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                if (!assignedSlots.Contains(i))
+                    settleTasks[i] = _slots[i].SlideToAsync(panelPositions[i], _settleDuration, ct);
             }
             await UniTask.WhenAll(settleTasks);
         }

@@ -87,7 +87,7 @@ namespace CubeRacing
 
         private void SpawnNpcCubes()
         {
-            Vector3 startPos = _positions[1];
+            Vector3 startPos = _positions[0];
             int     count    = _npcConfig.npcs.Length;
             float   h        = _raceConfig.npcHeight;
 
