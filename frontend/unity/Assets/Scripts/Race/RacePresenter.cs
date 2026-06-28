@@ -227,6 +227,7 @@ namespace CubeRacing
         {
             if (payload.actions == null || payload.actions.Count == 0) return;
 
+            var npcOrder = payload.actions.Select(a => a.npcId).ToArray();
             var npcSteps = new Dictionary<int, int>();
             var npcDice  = new Dictionary<int, int>();
             foreach (var action in payload.actions)
@@ -242,9 +243,8 @@ namespace CubeRacing
             }
 
             await _roundToast.ShowAsync(payload.roundNumber, ct);
-            var tempOrder = payload.actions.Select(a => a.npcId).ToArray();
-            await _dicePanel.ShowAsync(_npcConfig, tempOrder, npcDice, ct);
-            _bottomHud.SetRound(npcSteps);
+            await _dicePanel.ShowAsync(_npcConfig, npcOrder, npcDice, ct);
+            _bottomHud.SetRound(npcOrder, npcSteps);
 
             bool hadValidationError = false;
 
