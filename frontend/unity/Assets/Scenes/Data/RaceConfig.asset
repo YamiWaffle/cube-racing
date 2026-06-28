@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: RaceConfig
   m_EditorClassIdentifier: Assembly-CSharp::CubeRacing.RaceConfig
   stepDuration: 0.5
-  npcHeight: 0.5
+  npcHeight: 1
