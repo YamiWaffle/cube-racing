@@ -9,6 +9,7 @@ namespace CubeRacing
         {
             builder.RegisterComponentInHierarchy<BoardController>();
             builder.RegisterComponentInHierarchy<RacePresenter>();
+            builder.RegisterComponentInHierarchy<RaceCameraController>();
         }
     }
 }
