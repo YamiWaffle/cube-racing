@@ -44,6 +44,7 @@ namespace CubeRacing
         private void BuildPositions()
         {
             float s    = _tileSpacing;
+            _positions[0] = new Vector3(-s, 0f, 0f);
             int   cols = 5;
 
             for (int i = 1; i <= 20; i++)
@@ -58,7 +59,7 @@ namespace CubeRacing
 
         public Vector3 GetSquarePosition(int squareIndex)
         {
-            int clamped = Mathf.Clamp(squareIndex, 1, 20);
+            int clamped = Mathf.Clamp(squareIndex, 0, 20);
             return _positions[clamped];
         }
 
