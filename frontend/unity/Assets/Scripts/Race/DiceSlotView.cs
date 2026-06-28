@@ -18,12 +18,12 @@ namespace CubeRacing
         {
             _colorBlock.color = entry.color;
             _nameText.text    = entry.npcName;
-            _numberText.text  = "—";
+            _numberText.text  = string.Empty;
         }
 
         public void SetEmpty()
         {
-            _numberText.text = "—";
+            _numberText.text = string.Empty;
         }
 
         public async UniTask RollAsync(int finalValue, float rollDuration, CancellationToken ct)
