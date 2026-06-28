@@ -861,10 +861,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CubeRacing.RoundBottomHud
   _slots:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 165581123}
+  - {fileID: 786973497}
+  - {fileID: 831569233}
+  - {fileID: 986127958}
 --- !u!4 &398974058
 Transform:
   m_ObjectHideFlags: 0
@@ -2915,10 +2915,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CubeRacing.DiceRollPanelView
   _slots:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 482737389}
+  - {fileID: 1676300817}
+  - {fileID: 548085351}
+  - {fileID: 1149572340}
   _rollDuration: 1.2
   _holdDuration: 0.5
 --- !u!1 &1280835968
