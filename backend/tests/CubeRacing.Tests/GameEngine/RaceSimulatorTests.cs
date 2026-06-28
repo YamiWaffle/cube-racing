@@ -47,6 +47,8 @@ public class RaceSimulatorTests
     [Fact]
     public void BottomNpcCarriesEntireStackAboveIt()
     {
+        // NPC1 (bottom) moves first, carrying NPC2+NPC3 to sq7.
+        // Then NPC2 and NPC3 each take their own turn from their new positions.
         var rand = new FixedRaceRandomizer(order: [1, 2, 3], dice: [2, 1, 1]);
         var sim = RaceSimulator.CreateWithPositions(
             new Dictionary<int, List<int>> { [5] = [1, 2, 3] },
@@ -54,17 +56,22 @@ public class RaceSimulatorTests
 
         var result = sim.SimulateRound();
 
+        result.Actions.Should().HaveCount(3);
         var action = result.Actions[0];
         action.NpcId.Should().Be(1);
         action.FromSquare.Should().Be(5);
         action.ToSquare.Should().Be(7);
         action.CarriedNpcIds.Should().Equal([2, 3]);
-        result.SquareStacks["7"].Should().Equal([1, 2, 3]);
+        // After NPC2 (+1→sq8) and NPC3 (+1→sq9) take their own turns:
+        result.SquareStacks["7"].Should().Equal([1]);
+        result.SquareStacks["8"].Should().Equal([2]);
+        result.SquareStacks["9"].Should().Equal([3]);
     }
 
     [Fact]
     public void TopNpcMovesAloneWithoutCarryingNpcsBelow()
     {
+        // NPC2 (top) moves first — carries nobody. Then NPC1 (bottom) takes its own turn.
         var rand = new FixedRaceRandomizer(order: [2, 1], dice: [3, 1]);
         var sim = RaceSimulator.CreateWithPositions(
             new Dictionary<int, List<int>> { [5] = [1, 2] },
@@ -72,10 +79,13 @@ public class RaceSimulatorTests
 
         var result = sim.SimulateRound();
 
+        result.Actions.Should().HaveCount(2);
         var action = result.Actions[0]; // NPC2 moves first
         action.NpcId.Should().Be(2);
         action.CarriedNpcIds.Should().BeEmpty();
-        result.SquareStacks["5"].Should().Equal([1]);
+        // NPC1 also takes its own turn (+1 → sq6), so sq5 is empty at end
+        result.SquareStacks.Should().NotContainKey("5");
+        result.SquareStacks["6"].Should().Equal([1]);
         result.SquareStacks["8"].Should().Equal([2]);
     }
 
@@ -112,22 +122,4 @@ public class RaceSimulatorTests
         sim.GetWinner().Should().BeNull();
     }
 
-    [Fact]
-    public void NpcFromAlreadyMovedStackIsSkippedInSameRound()
-    {
-        // Stack [1, 2] at sq5. NPC2 (top) goes first.
-        // After NPC2 moves, NPC1's turn comes — NPC1 was in same initial group, so it is SKIPPED.
-        var rand = new FixedRaceRandomizer(order: [2, 1], dice: [1, 1]);
-        var sim = RaceSimulator.CreateWithPositions(
-            new Dictionary<int, List<int>> { [5] = [1, 2] },
-            mapLength: 20, rand);
-
-        var result = sim.SimulateRound();
-
-        // NPC2 moved (+1 → sq6), NPC1 was skipped (stays at sq5)
-        result.Actions.Should().HaveCount(1); // only NPC2 moved
-        result.Actions[0].NpcId.Should().Be(2);
-        result.SquareStacks["5"].Should().Equal([1]);
-        result.SquareStacks["6"].Should().Equal([2]);
-    }
 }

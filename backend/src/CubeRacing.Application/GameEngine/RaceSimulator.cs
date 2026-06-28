@@ -8,18 +8,25 @@ public class RaceSimulator
     private readonly List<int>[] _squares;
     private readonly int _mapLength;
     private readonly IRaceRandomizer _randomizer;
+    private readonly int[] _npcIds;
 
     public RaceSimulator(int npcCount, int mapLength, IRaceRandomizer? randomizer = null)
     {
         _mapLength = mapLength;
         _randomizer = randomizer ?? new DefaultRaceRandomizer();
+        _npcIds = new int[npcCount];
         _squares = InitSquares(mapLength + 1);
-        for (int id = 1; id <= npcCount; id++)
-            _squares[0].Add(id);
+        for (int i = 0; i < npcCount; i++)
+        {
+            var npcId = i + 1;
+            _npcIds[i] = npcId;
+            _squares[0].Add(npcId);
+        }
     }
 
-    private RaceSimulator(List<int>[] squares, int mapLength, IRaceRandomizer randomizer)
+    private RaceSimulator(int[] npcIds, List<int>[] squares, int mapLength, IRaceRandomizer randomizer)
     {
+        _npcIds = npcIds;
         _squares = squares;
         _mapLength = mapLength;
         _randomizer = randomizer;
@@ -28,10 +35,12 @@ public class RaceSimulator
     public static RaceSimulator CreateWithPositions(
         Dictionary<int, List<int>> positions, int mapLength, IRaceRandomizer randomizer)
     {
+        var npcIds = positions.Values.SelectMany(x => x).ToArray();
         var squares = InitSquares(mapLength + 1);
         foreach (var (sq, stack) in positions)
             squares[sq].AddRange(stack);
-        return new RaceSimulator(squares, mapLength, randomizer);
+        
+        return new RaceSimulator(npcIds, squares, mapLength, randomizer);
     }
 
     private static List<int>[] InitSquares(int size)
@@ -43,47 +52,32 @@ public class RaceSimulator
 
     public RoundResult SimulateRound()
     {
-        // Capture initial stack groups: each NPC maps to the set of NPCs that started in the same stack
-        // The "group leader" is the first NPC in the shuffled order that belongs to the group
-        var npcToGroup = new Dictionary<int, int>(); // npcId -> groupId (groupId = square index at start)
-        var allNpcs = new List<int>();
-        for (int s = 0; s <= _mapLength; s++)
-        {
-            foreach (int npcId in _squares[s])
-            {
-                npcToGroup[npcId] = s;
-                allNpcs.Add(npcId);
-            }
-        }
-
-        var order = _randomizer.ShuffleOrder(allNpcs);
+        var order = _randomizer.ShuffleOrder(_npcIds);
         var actions = new List<RoundAction>();
-        var movedGroups = new HashSet<int>(); // groups that have already had their leader move
 
-        foreach (int npcId in order)
+        foreach (var npcId in order)
         {
-            // Skip NPCs not in our game (edge case safety)
-            if (!npcToGroup.TryGetValue(npcId, out int groupId)) continue;
+            var (fromSquare, stackIdx) = FindNpc(npcId);
+            
+            // already at finish, skip
+            if (fromSquare == _mapLength) continue;
+            
+            var dice = _randomizer.RollDice();
+            var moving = _squares[fromSquare].Skip(stackIdx).ToList();
+            _squares[fromSquare] = _squares[fromSquare].Take(stackIdx).ToList();
+            
+            var toSquare = Math.Min(fromSquare + dice, _mapLength);
+            _squares[toSquare].AddRange(moving);
 
-            // Skip if this group has already had its leader take a turn this round
-            if (movedGroups.Contains(groupId)) continue;
-
-            var (fromSq, idx) = FindNpc(npcId);
-            if (fromSq == _mapLength) continue; // already at finish, skip
-
-            // Mark this group as having moved
-            movedGroups.Add(groupId);
-
-            int dice = _randomizer.RollDice();
-            var moving = _squares[fromSq].Skip(idx).ToList();
-            _squares[fromSq] = _squares[fromSq].Take(idx).ToList();
-
-            int toSq = Math.Min(fromSq + dice, _mapLength);
-            _squares[toSq].AddRange(moving);
-
-            actions.Add(new RoundAction(npcId, dice, fromSq, toSq, moving.Skip(1).ToList()));
+            var roundAction = new RoundAction(
+                npcId,
+                dice, 
+                fromSquare,
+                toSquare, 
+                moving.Skip(1).ToList());
+            actions.Add(roundAction);
         }
-
+        
         return new RoundResult(actions, GetSquareStacks(), GetWinner());
     }
 
