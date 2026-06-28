@@ -28,12 +28,18 @@ namespace CubeRacing
         [SerializeField] private GameObject _winnerBanner;
         [SerializeField] private TMP_Text   _winnerText;
 
+        // Round presentation
+        [SerializeField] private RoundToastView    _roundToast;
+        [SerializeField] private DiceRollPanelView _dicePanel;
+        [SerializeField] private RoundBottomHud    _bottomHud;
+
         private BoardController  _board;
         private GameStateService _gameState;
         private PlayerSession    _session;
         private NpcConfig        _npcConfig;
         private ApiClient        _api;
         private RaceConfig       _raceConfig;
+        private RaceCameraController _camera;
         private ISubscriber<RoundExecutedMessage>  _roundSubscriber;
         private ISubscriber<RaceCompletedMessage>  _raceCompletedSubscriber;
         private ISubscriber<SettlementDoneMessage> _settlementSubscriber;
@@ -52,6 +58,7 @@ namespace CubeRacing
             BoardController board, GameStateService gameState,
             PlayerSession session, NpcConfig npcConfig, ApiClient api,
             RaceConfig raceConfig,
+            RaceCameraController camera,
             ISubscriber<RoundExecutedMessage>  roundSubscriber,
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
             ISubscriber<SettlementDoneMessage> settlementSubscriber,
@@ -63,6 +70,7 @@ namespace CubeRacing
             _npcConfig               = npcConfig;
             _api                     = api;
             _raceConfig              = raceConfig;
+            _camera                  = camera;
             _roundSubscriber         = roundSubscriber;
             _raceCompletedSubscriber = raceCompletedSubscriber;
             _settlementSubscriber    = settlementSubscriber;
@@ -75,6 +83,7 @@ namespace CubeRacing
             _winnerBanner.SetActive(false);
             _backButton.interactable = true;
             _backButton.onClick.AddListener(ReturnToLobby);
+            _bottomHud.Initialize(_npcConfig);
             _returnButton.onClick.AddListener(ReturnToLobby);
 
             _session.Chips.Subscribe(c => _chipsText.text = $"Chips: {c:N0}").AddTo(_disposables);
@@ -174,13 +183,13 @@ namespace CubeRacing
                     if (i == 0)
                     {
                         cube.transform.SetParent(null);
-                        cube.transform.position = sqPos + Vector3.up * 0.5f;
+                        cube.transform.position = sqPos + Vector3.up * _raceConfig.npcHeight;
                     }
                     else
                     {
                         if (!_board.NpcCubes.TryGetValue(npcIds[i - 1], out var below)) continue;
                         cube.transform.SetParent(below.transform);
-                        cube.transform.localPosition = Vector3.up * 0.5f;
+                        cube.transform.localPosition = Vector3.up * _raceConfig.npcHeight;
                     }
                 }
             }
@@ -217,6 +226,24 @@ namespace CubeRacing
         {
             if (payload.actions == null || payload.actions.Count == 0) return;
 
+            var npcSteps = new Dictionary<int, int>();
+            var npcDice  = new Dictionary<int, int>();
+            foreach (var action in payload.actions)
+            {
+                int steps = action.toSquare - action.fromSquare;
+                npcSteps[action.npcId] = steps;
+                npcDice[action.npcId]  = action.diceRoll;
+                foreach (var carried in action.carriedNpcIds)
+                {
+                    npcSteps[carried] = steps;
+                    npcDice[carried]  = action.diceRoll;
+                }
+            }
+
+            await _roundToast.ShowAsync(payload.roundNumber, ct);
+            await _dicePanel.ShowAsync(_npcConfig, npcDice, ct);
+            _bottomHud.SetRound(npcSteps);
+
             bool hadValidationError = false;
 
             foreach (var action in payload.actions)
@@ -226,7 +253,9 @@ namespace CubeRacing
 
                 if (!_board.NpcCubes.TryGetValue(action.npcId, out var movingCube)) continue;
 
-                // Remove the moving group from fromSquare tracking
+                _bottomHud.SetActiveNpc(action.npcId);
+                await _camera.FocusOnAsync(movingCube.transform, ct);
+
                 if (_localStacks.TryGetValue(action.fromSquare, out var fromList))
                 {
                     fromList.Remove(action.npcId);
@@ -234,13 +263,13 @@ namespace CubeRacing
                         fromList.Remove(cId);
                 }
 
-                // De-parent the moving NPC; its carried descendants follow automatically
                 movingCube.transform.SetParent(null);
 
                 for (int sq = action.fromSquare + 1; sq <= action.toSquare; sq++)
                 {
-                    int stackCount  = _localStacks.TryGetValue(sq, out var existing) ? existing.Count : 0;
-                    var targetWorld = _board.GetSquarePosition(sq) + Vector3.up * (0.5f + stackCount * 0.5f);
+                    int   stackCount  = _localStacks.TryGetValue(sq, out var existing) ? existing.Count : 0;
+                    float h           = _raceConfig.npcHeight;
+                    var   targetWorld = _board.GetSquarePosition(sq) + Vector3.up * (h + stackCount * h);
 
                     await movingCube.MoveToAsync(targetWorld, _raceConfig.stepDuration, ct);
 
@@ -251,13 +280,11 @@ namespace CubeRacing
                         movingCube.transform.SetParent(null);
                 }
 
-                // Update tracking with final position
                 if (!_localStacks.TryGetValue(action.toSquare, out var toList))
                     _localStacks[action.toSquare] = toList = new List<int>();
                 toList.Add(action.npcId);
                 toList.AddRange(action.carriedNpcIds);
 
-                // Validate descendants match carriedNpcIds
                 var actualDescendants = GetAllDescendantIds(action.npcId);
                 var expectedSet       = new HashSet<int>(action.carriedNpcIds);
                 var actualSet         = new HashSet<int>(actualDescendants);
@@ -270,13 +297,13 @@ namespace CubeRacing
                 }
             }
 
-            // Re-sync _localStacks from authoritative backend data
+            _bottomHud.Hide();
+
             _localStacks.Clear();
             foreach (var (k, v) in payload.squareStacks)
                 if (int.TryParse(k, out int sq))
                     _localStacks[sq] = new List<int>(v);
 
-            // Snap positions if validation detected drift
             if (hadValidationError)
                 ApplySquareStacks(payload.squareStacks);
         }
