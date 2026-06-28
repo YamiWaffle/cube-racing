@@ -5,17 +5,22 @@ using UnityEngine;
 
 namespace CubeRacing
 {
-    public class RoundToastView : MonoBehaviour
+    public class RoundToastView : UIBehaviour
     {
         [SerializeField] private TMP_Text _text;
-        [SerializeField] private float    _displayDuration = 0.8f;
+        [SerializeField] private float _displayDuration = 0.8f;
+        
 
-        public async UniTask ShowAsync(int round, CancellationToken ct)
+        public async UniTask ShowAsync(int round, CancellationToken cancellationToken)
         {
             _text.text = $"Round {round}";
-            gameObject.SetActive(true);
-            await UniTask.Delay((int)(_displayDuration * 1000), cancellationToken: ct);
-            gameObject.SetActive(false);
+            
+            await UIShowAsync(cancellationToken: cancellationToken);
+            
+            // Hold to display
+            await UniTask.Delay((int)(_displayDuration * 1000), cancellationToken: cancellationToken);
+            
+            await UIHideAsync(cancellationToken: cancellationToken);
         }
     }
 }

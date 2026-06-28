@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace CubeRacing
 {
-    public class DiceRollPanelView : MonoBehaviour
+    public class DiceRollPanelView : UIBehaviour
     {
         [SerializeField] private DiceSlotView[] _slots;
         [SerializeField] private float          _rollDuration = 1.2f;
@@ -14,9 +14,9 @@ namespace CubeRacing
         public async UniTask ShowAsync(
             NpcConfig npcConfig,
             Dictionary<int, int> npcDice,
-            CancellationToken ct)
+            CancellationToken cancellationToken)
         {
-            gameObject.SetActive(true);
+            await UIShowAsync(cancellationToken: cancellationToken);
 
             var tasks = new UniTask[_slots.Length];
             for (int i = 0; i < _slots.Length; i++)
@@ -24,7 +24,7 @@ namespace CubeRacing
                 var entry = npcConfig.npcs[i];
                 _slots[i].Setup(entry);
                 if (npcDice.TryGetValue(entry.id, out int dice))
-                    tasks[i] = _slots[i].RollAsync(dice, _rollDuration, ct);
+                    tasks[i] = _slots[i].RollAsync(dice, _rollDuration, cancellationToken);
                 else
                 {
                     _slots[i].SetEmpty();
@@ -33,8 +33,8 @@ namespace CubeRacing
             }
 
             await UniTask.WhenAll(tasks);
-            await UniTask.Delay((int)(_holdDuration * 1000), cancellationToken: ct);
-            gameObject.SetActive(false);
+            await UniTask.Delay((int)(_holdDuration * 1000), cancellationToken: cancellationToken);
+            await UIHideAsync(cancellationToken: cancellationToken);
         }
     }
 }
