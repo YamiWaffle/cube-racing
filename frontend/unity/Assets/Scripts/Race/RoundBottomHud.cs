@@ -8,19 +8,22 @@ namespace CubeRacing
         [SerializeField] private RoundHudSlotView[] _slots;
 
         private NpcConfig _npcConfig;
+        private int[]     _npcOrder;
 
         public void Initialize(NpcConfig npcConfig)
         {
             _npcConfig = npcConfig;
         }
 
-        public void SetRound(Dictionary<int, int> npcSteps)
+        public void SetRound(int[] npcOrder, Dictionary<int, int> npcSteps)
         {
+            _npcOrder = npcOrder;
             gameObject.SetActive(true);
-            for (int i = 0; i < _slots.Length; i++)
+            for (int i = 0; i < _slots.Length && i < npcOrder.Length; i++)
             {
-                var entry = _npcConfig.npcs[i];
-                int? steps = npcSteps.TryGetValue(entry.id, out int s) ? s : (int?)null;
+                var entry = _npcConfig.GetById(npcOrder[i]);
+                if (entry == null) continue;
+                int? steps = npcSteps.TryGetValue(npcOrder[i], out int s) ? s : (int?)null;
                 _slots[i].Setup(entry, steps);
                 _slots[i].SetActive(false);
             }
@@ -28,8 +31,9 @@ namespace CubeRacing
 
         public void SetActiveNpc(int npcId)
         {
-            for (int i = 0; i < _slots.Length; i++)
-                _slots[i].SetActive(_npcConfig.npcs[i].id == npcId);
+            if (_npcOrder == null) return;
+            for (int i = 0; i < _slots.Length && i < _npcOrder.Length; i++)
+                _slots[i].SetActive(_npcOrder[i] == npcId);
         }
 
         public void Hide() => gameObject.SetActive(false);
