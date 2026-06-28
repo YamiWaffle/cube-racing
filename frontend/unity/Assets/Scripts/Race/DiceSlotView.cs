@@ -1,5 +1,6 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,6 +36,14 @@ namespace CubeRacing
                 elapsed += _rollIntervalSec;
             }
             _numberText.text = finalValue.ToString();
+        }
+
+        public UniTask SlideToAsync(Vector2 targetAnchoredPos, float duration, CancellationToken ct)
+        {
+            return ((RectTransform)transform)
+                .DOAnchorPos(targetAnchoredPos, duration)
+                .SetEase(Ease.InOutSine)
+                .ToUniTask(cancellationToken: ct);
         }
     }
 }

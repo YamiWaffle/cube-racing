@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -241,7 +242,8 @@ namespace CubeRacing
             }
 
             await _roundToast.ShowAsync(payload.roundNumber, ct);
-            await _dicePanel.ShowAsync(_npcConfig, npcDice, ct);
+            var tempOrder = payload.actions.Select(a => a.npcId).ToArray();
+            await _dicePanel.ShowAsync(_npcConfig, tempOrder, npcDice, ct);
             _bottomHud.SetRound(npcSteps);
 
             bool hadValidationError = false;
