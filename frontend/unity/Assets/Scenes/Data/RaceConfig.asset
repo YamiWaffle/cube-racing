@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97ffef98959924ace9b0ad9a60a98865, type: 3}
   m_Name: RaceConfig
   m_EditorClassIdentifier: Assembly-CSharp::CubeRacing.RaceConfig
-  stepDuration: 0.3
+  stepDuration: 0.5
