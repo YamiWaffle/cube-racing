@@ -25,9 +25,8 @@ namespace CubeRacing
         [SerializeField] private TMP_Text   _settlementText;
         [SerializeField] private Button     _returnButton;
 
-        // Winner banner
-        [SerializeField] private GameObject _winnerBanner;
-        [SerializeField] private TMP_Text   _winnerText;
+        // Winner text — child of _settlementPanel, wired in Inspector
+        [SerializeField] private TMP_Text _winnerText;
 
         // Round presentation
         [SerializeField] private RoundToastView    _roundToast;
@@ -83,7 +82,6 @@ namespace CubeRacing
         private void Start()
         {
             _settlementPanel.SetActive(false);
-            _winnerBanner.SetActive(false);
             _backButton.interactable = true;
             _backButton.onClick.AddListener(ReturnToLobby);
             _bottomHud.Initialize(_npcConfig);
@@ -102,17 +100,26 @@ namespace CubeRacing
             _raceCompletedSubscriber.Subscribe(m =>
             {
                 if (!_animating)
-                    ShowWinnerAsync(m.WinnerNpcId, destroyCancellationToken).Forget();
+                    ShowResult(m.WinnerNpcId, _pendingSettlement);
                 else
                     _pendingWinnerNpcId = m.WinnerNpcId;
             }).AddTo(_disposables);
 
             _settlementSubscriber.Subscribe(m =>
             {
-                if (!_animating)
-                    ShowSettlement(m.Payload);
-                else
+                if (_animating)
+                {
                     _pendingSettlement = m.Payload;
+                }
+                else if (_settlementPanel.activeSelf)
+                {
+                    // Panel already showing "結算中..." — fill in settlement text now
+                    ApplySettlementText(m.Payload);
+                }
+                else
+                {
+                    _pendingSettlement = m.Payload;
+                }
             }).AddTo(_disposables);
 
             _initialSyncTask = SyncNpcPositionsAsync(destroyCancellationToken);
@@ -215,13 +222,9 @@ namespace CubeRacing
                 _animating = false;
                 if (_pendingWinnerNpcId.HasValue)
                 {
-                    ShowWinnerAsync(_pendingWinnerNpcId.Value, destroyCancellationToken).Forget();
+                    ShowResult(_pendingWinnerNpcId.Value, _pendingSettlement);
                     _pendingWinnerNpcId = null;
-                }
-                if (_pendingSettlement != null)
-                {
-                    ShowSettlement(_pendingSettlement);
-                    _pendingSettlement = null;
+                    _pendingSettlement   = null;
                 }
             }
         }
@@ -339,20 +342,24 @@ namespace CubeRacing
             }
         }
 
-        private async UniTaskVoid ShowWinnerAsync(int winnerNpcId, CancellationToken ct)
+        private void ShowResult(int winnerNpcId, SettlementDonePayload settlement)
         {
             var entry = _npcConfig.GetById(winnerNpcId);
             _winnerText.text = $"{entry?.npcName ?? winnerNpcId.ToString()} wins!";
-            _winnerBanner.SetActive(true);
 
-            // Punch scale on winner cube
             if (_board.NpcCubes.TryGetValue(winnerNpcId, out var cube))
                 cube.transform.DOPunchScale(Vector3.one * 0.5f, 0.6f, 5);
 
-            await UniTask.Delay(1500, cancellationToken: ct);
+            if (settlement != null)
+                ApplySettlementText(settlement);
+            else
+                _settlementText.text = "結算中...";
+
+            _settlementPanel.SetActive(true);
+            _backButton.interactable = true;
         }
 
-        private void ShowSettlement(SettlementDonePayload payload)
+        private void ApplySettlementText(SettlementDonePayload payload)
         {
             var me = payload.playerResults?.Find(r => r.nickname == _session.Nickname);
             if (me != null)
@@ -366,9 +373,6 @@ namespace CubeRacing
             {
                 _settlementText.text = "No bet this round";
             }
-
-            _settlementPanel.SetActive(true);
-            _backButton.interactable = true;
         }
 
         private void ReturnToLobby()
