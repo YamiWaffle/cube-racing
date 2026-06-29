@@ -238,6 +238,7 @@ namespace CubeRacing
 
             _watchRaceButton.interactable = canWatch;
             _watchRaceButtonText.text     = canWatch ? "Watch Race" : "Not started";
+            _watchRaceButtonText.color    = canWatch ? Color.white : Color.gray;
 
             if (isBetting) StartCountdown();
             else StopCountdown();
