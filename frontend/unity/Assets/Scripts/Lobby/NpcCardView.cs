@@ -64,7 +64,7 @@ namespace CubeRacing
                 _betBorder.color = new Color(1f, 0.84f, 0f);   // gold
             if (_betBadgeText != null)
             {
-                _betBadgeText.text    = $"✓ Bet {amount:N0}";
+                _betBadgeText.text    = $"Bet {amount:N0}";
                 _betBadgeText.gameObject.SetActive(true);
             }
         }
