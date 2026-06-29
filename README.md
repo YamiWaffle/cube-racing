@@ -195,7 +195,7 @@ The same IDs and colors are mirrored in the Unity `NpcConfig` ScriptableObject (
 
 **Thread safety:** `RabbitMqPublisher` is a singleton; `IModel` access is guarded by `SemaphoreSlim(1,1)`. `ISessionCompletionSignal` uses `SemaphoreSlim(0,1)` with idempotent release.
 
-**CJK font:** `STHeitiMedium` (macOS system font) is imported as a TMP Dynamic Font Asset and added as a fallback to LiberationSans SDF, so Traditional Chinese renders without baking a full atlas.
+**Leaderboard Viewport Mask:** The ScrollView Viewport uses `Mask` (not `RectMask2D`). The Viewport `Image` must have `alpha=1`; `showMaskGraphic=false` hides it visually but the stencil write still depends on the Image alpha. An `alpha=0` Image produces an empty stencil that silently hides all scrollable content.
 
 **Race start delay:** `BettingEndedConsumer` sets `ICurrentSessionStore.RaceStartsAt`, broadcasts `RaceStarting`, then `await Task.Delay(30s)` before running round 1. Frontend shows a countdown; late-joiners fall back to `GET /api/sessions/current` for the timestamp.
 
