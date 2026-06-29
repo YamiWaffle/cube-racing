@@ -212,6 +212,7 @@ namespace CubeRacing
 
         private async UniTaskVoid DrainQueueAsync(CancellationToken ct)
         {
+            _raceOver = false;
             _animating = true;
             await _initialSyncTask;
             try
@@ -356,7 +357,10 @@ namespace CubeRacing
             _winnerText.text = $"{entry?.npcName ?? winnerNpcId.ToString()} wins!";
 
             if (_board.NpcCubes.TryGetValue(winnerNpcId, out var cube))
+            {
+                cube.transform.DOKill();
                 cube.transform.DOPunchScale(Vector3.one * 0.5f, 0.6f, 5);
+            }
 
             if (settlement != null)
                 ApplySettlementText(settlement);
