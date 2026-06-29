@@ -15,6 +15,7 @@ namespace CubeRacing
         public ReactiveProperty<int?>          WinnerNpcId      { get; } = new(null);
         public ReactiveProperty<bool>          IsConnected      { get; } = new(false);
         public ReactiveProperty<DateTime?>     RaceStartsAt     { get; } = new(null);
+        public ReactiveProperty<DateTime?>     BettingStartsAt  { get; } = new(null);
         public ReactiveProperty<int?>          BetNpcId         { get; } = new(null);
         public ReactiveProperty<int?>          BetAmount        { get; } = new(null);
         public Guid CurrentSessionId { get; private set; }
@@ -25,7 +26,8 @@ namespace CubeRacing
         private readonly ISubscriber<RaceCompletedMessage>   _raceCompletedSubscriber;
         private readonly ISubscriber<SettlementDoneMessage>  _settlementSubscriber;
         private readonly ISubscriber<RaceStartingMessage>    _raceStartingSubscriber;
-        private readonly ISubscriber<BettingStartedMessage>  _bettingStartedSubscriber;
+        private readonly ISubscriber<BettingStartedMessage>   _bettingStartedSubscriber;
+        private readonly ISubscriber<WaitingStartedMessage>  _waitingStartedSubscriber;
         private readonly CompositeDisposable _bag = new();
 
         public GameStateService(
@@ -34,14 +36,16 @@ namespace CubeRacing
             ISubscriber<RaceCompletedMessage>  raceCompletedSubscriber,
             ISubscriber<SettlementDoneMessage> settlementSubscriber,
             ISubscriber<RaceStartingMessage>   raceStartingSubscriber,
-            ISubscriber<BettingStartedMessage> bettingStartedSubscriber)
+            ISubscriber<BettingStartedMessage>  bettingStartedSubscriber,
+            ISubscriber<WaitingStartedMessage>  waitingStartedSubscriber)
         {
-            _oddsSubscriber           = oddsSubscriber;
-            _bettingEndedSubscriber   = bettingEndedSubscriber;
-            _raceCompletedSubscriber  = raceCompletedSubscriber;
-            _settlementSubscriber     = settlementSubscriber;
-            _raceStartingSubscriber   = raceStartingSubscriber;
-            _bettingStartedSubscriber = bettingStartedSubscriber;
+            _oddsSubscriber            = oddsSubscriber;
+            _bettingEndedSubscriber    = bettingEndedSubscriber;
+            _raceCompletedSubscriber   = raceCompletedSubscriber;
+            _settlementSubscriber      = settlementSubscriber;
+            _raceStartingSubscriber    = raceStartingSubscriber;
+            _bettingStartedSubscriber  = bettingStartedSubscriber;
+            _waitingStartedSubscriber  = waitingStartedSubscriber;
         }
 
         public void Initialize()
@@ -63,11 +67,15 @@ namespace CubeRacing
             _raceStartingSubscriber.Subscribe(m =>
                 RaceStartsAt.Value = m.RaceStartsAt).AddTo(_bag);
 
+            _waitingStartedSubscriber.Subscribe(m =>
+                BettingStartsAt.Value = m.BettingStartsAt).AddTo(_bag);
+
             _bettingStartedSubscriber.Subscribe(_ =>
             {
-                RaceStartsAt.Value = null;
-                BetNpcId.Value     = null;
-                BetAmount.Value    = null;
+                RaceStartsAt.Value    = null;
+                BettingStartsAt.Value = null;
+                BetNpcId.Value        = null;
+                BetAmount.Value       = null;
             }).AddTo(_bag);
         }
 
@@ -80,6 +88,7 @@ namespace CubeRacing
             NpcOdds.Value          = session.npcOdds ?? new();
             HasPlacedBet.Value     = false;
             WinnerNpcId.Value      = null;
+            BettingStartsAt.Value  = session.bettingStartsAt;
             Status.Value           = session.status;
         }
 

@@ -36,4 +36,10 @@ namespace CubeRacing
         public readonly DateTime RaceStartsAt;
         public RaceStartingMessage(DateTime raceStartsAt) => RaceStartsAt = raceStartsAt;
     }
+
+    public readonly struct WaitingStartedMessage
+    {
+        public readonly DateTime BettingStartsAt;
+        public WaitingStartedMessage(DateTime bettingStartsAt) => BettingStartsAt = bettingStartsAt;
+    }
 }

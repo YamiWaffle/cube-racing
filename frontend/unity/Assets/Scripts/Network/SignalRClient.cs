@@ -22,7 +22,8 @@ namespace CubeRacing
         private readonly IPublisher<BettingEndedMessage>    _bettingEndedPublisher;
         private readonly IPublisher<RoundExecutedMessage>   _roundPublisher;
         private readonly IPublisher<RaceCompletedMessage>   _raceCompletedPublisher;
-        private readonly IPublisher<SettlementDoneMessage>  _settlementPublisher;
+        private readonly IPublisher<SettlementDoneMessage>   _settlementPublisher;
+        private readonly IPublisher<WaitingStartedMessage>  _waitingStartedPublisher;
 
         private ClientWebSocket          _ws;
         private CancellationTokenSource  _cts;
@@ -37,17 +38,19 @@ namespace CubeRacing
             IPublisher<BettingEndedMessage>    bettingEndedPublisher,
             IPublisher<RoundExecutedMessage>   roundPublisher,
             IPublisher<RaceCompletedMessage>   raceCompletedPublisher,
-            IPublisher<SettlementDoneMessage>  settlementPublisher)
+            IPublisher<SettlementDoneMessage>  settlementPublisher,
+            IPublisher<WaitingStartedMessage>  waitingStartedPublisher)
         {
-            _url                     = url;
-            _gameState               = gameState;
-            _bettingStartedPublisher = bettingStartedPublisher;
-            _raceStartingPublisher   = raceStartingPublisher;
-            _oddsPublisher           = oddsPublisher;
-            _bettingEndedPublisher   = bettingEndedPublisher;
-            _roundPublisher          = roundPublisher;
-            _raceCompletedPublisher  = raceCompletedPublisher;
-            _settlementPublisher     = settlementPublisher;
+            _url                      = url;
+            _gameState                = gameState;
+            _bettingStartedPublisher  = bettingStartedPublisher;
+            _raceStartingPublisher    = raceStartingPublisher;
+            _oddsPublisher            = oddsPublisher;
+            _bettingEndedPublisher    = bettingEndedPublisher;
+            _roundPublisher           = roundPublisher;
+            _raceCompletedPublisher   = raceCompletedPublisher;
+            _settlementPublisher      = settlementPublisher;
+            _waitingStartedPublisher  = waitingStartedPublisher;
         }
 
         public async UniTask ConnectAsync(CancellationToken ct = default)
@@ -158,6 +161,13 @@ namespace CubeRacing
                         {
                             case "BettingStarted":
                                 _bettingStartedPublisher.Publish(new BettingStartedMessage());
+                                break;
+                            case "WaitingStarted":
+                                if (args?.Count > 0)
+                                {
+                                    var bettingStartsAt = args[0]["bettingStartsAt"].Value<DateTime>();
+                                    _waitingStartedPublisher.Publish(new WaitingStartedMessage(bettingStartsAt));
+                                }
                                 break;
                             case "RaceStarting":
                                 if (args?.Count > 0)
