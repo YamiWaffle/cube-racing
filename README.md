@@ -64,7 +64,7 @@ cube-racing/
 - Docker Desktop
 - Unity 6 (6000.x)
 
-### Backend
+### Backend — Option A: local dev (faster iteration)
 
 ```bash
 cd backend
@@ -81,6 +81,15 @@ API runs at `https://localhost:7xxx` — check `launchSettings.json` for the exa
 **Infrastructure:**
 - MSSQL: `localhost:1433` (SA / `CubeRacing!123`)
 - RabbitMQ management: `http://localhost:15672` (guest / guest)
+
+### Backend — Option B: full Docker (no SDK required)
+
+```bash
+cd backend
+docker compose up -d --build
+```
+
+Builds the API image and starts API + MSSQL + RabbitMQ together. API available at `http://localhost:8080`. MSSQL and RabbitMQ healthchecks gate the API startup; DB is auto-migrated on first boot.
 
 ### Frontend
 

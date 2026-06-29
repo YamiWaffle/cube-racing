@@ -8,8 +8,8 @@ namespace CubeRacing
 {
     public class Main : LifetimeScope
     {
-        private const string ApiBaseUrl = "http://localhost:5062";
-        private const string SignalRUrl = "ws://localhost:5062/hubs/game";
+        private const string ApiBaseUrl = "http://localhost:8080";
+        private const string SignalRUrl = "ws://localhost:8080/hubs/game";
 
         [SerializeField] private NpcConfig  _npcConfig;
         [SerializeField] private RaceConfig _raceConfig;
