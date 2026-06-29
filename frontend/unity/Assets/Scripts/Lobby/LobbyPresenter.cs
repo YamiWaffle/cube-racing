@@ -18,6 +18,8 @@ namespace CubeRacing
         [SerializeField] private Button                  _watchRaceButton;
         [SerializeField] private TMP_Text                _watchRaceButtonText;
         [SerializeField] private Button                  _leaderboardButton;
+        [SerializeField] private Button                  _howToPlayButton;
+        [SerializeField] private HowToPlayPresenter      _howToPlayPanel;
         [SerializeField] private Transform               _npcCardsContainer;
         [SerializeField] private NpcCardView             _npcCardPrefab;
         [SerializeField] private BettingDialogPresenter  _bettingDialog;
@@ -72,6 +74,7 @@ namespace CubeRacing
         {
             _watchRaceButton.onClick.AddListener(OnWatchRaceClicked);
             _leaderboardButton.onClick.AddListener(() => _leaderboardPanel.Show(destroyCancellationToken).Forget());
+            _howToPlayButton.onClick.AddListener(() => _howToPlayPanel.Show());
 
             // Use _session.Chips (PlayerSession owns chip balance, not GameStateService)
             _session.Chips.Subscribe(c => _chipsText.text = $"Chips: {c:N0}").AddTo(_disposables);
