@@ -54,6 +54,7 @@ namespace CubeRacing
         private CancellationTokenSource _countdownCts;
         private int? _pendingWinnerNpcId;
         private SettlementDonePayload _pendingSettlement;
+        private bool _raceOver = false;
 
         [Inject]
         public void Construct(
@@ -203,7 +204,7 @@ namespace CubeRacing
             await _initialSyncTask;
             try
             {
-                while (_roundQueue.Count > 0 && !ct.IsCancellationRequested)
+                while (_roundQueue.Count > 0 && !ct.IsCancellationRequested && !_raceOver)
                 {
                     var payload = _roundQueue.Dequeue();
                     await PlayRoundAsync(payload, ct);
@@ -299,9 +300,17 @@ namespace CubeRacing
                                    $"Actual: [{string.Join(",", actualSet)}]");
                     hadValidationError = true;
                 }
+
+                if (action.toSquare == _gameState.MapLength - 1)
+                {
+                    _raceOver = true;
+                    break;
+                }
             }
 
             _bottomHud.Hide();
+
+            if (_raceOver) return;
 
             _localStacks.Clear();
             foreach (var (k, v) in payload.squareStacks)
