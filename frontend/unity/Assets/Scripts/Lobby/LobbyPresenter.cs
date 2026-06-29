@@ -84,6 +84,10 @@ namespace CubeRacing
             _gameState.BettingStartsAt
                 .Subscribe(t =>
                 {
+                    // Entering/re-entering Waiting phase — stop any lingering race entry countdown
+                    _raceEntryCts?.Cancel();
+                    _raceEntryCts?.Dispose();
+                    _raceEntryCts = null;
                     _waitingCts?.Cancel();
                     _waitingCts?.Dispose();
                     _waitingCts = null;
@@ -97,6 +101,10 @@ namespace CubeRacing
             _gameState.RaceStartsAt
                 .Subscribe(t =>
                 {
+                    // Entering Racing phase — stop any lingering waiting countdown
+                    _waitingCts?.Cancel();
+                    _waitingCts?.Dispose();
+                    _waitingCts = null;
                     _raceEntryCts?.Cancel();
                     _raceEntryCts?.Dispose();
                     _raceEntryCts = null;
@@ -223,15 +231,47 @@ namespace CubeRacing
 
         private void OnStatusChanged(string status)
         {
-            _statusText.text = status switch
+            // Cancel countdown loops that don't belong to the incoming phase.
+            // Each phase's loop owns _statusText exclusively while it runs.
+            if (status != "Waiting")
             {
-                "Waiting"   => "Preparing...",
-                "Betting"   => $"Betting closes in {_gameState.SecondsRemaining.Value ?? 0}s",
-                "Racing"    => "Race in progress",
-                "Settling"  => "Settling...",
-                "Completed" => $"{GetWinnerName()} wins!",
-                _           => status
-            };
+                _waitingCts?.Cancel();
+                _waitingCts?.Dispose();
+                _waitingCts = null;
+            }
+            if (status != "Racing")
+            {
+                _raceEntryCts?.Cancel();
+                _raceEntryCts?.Dispose();
+                _raceEntryCts = null;
+            }
+
+            // Only write _statusText for phases that have no dedicated countdown loop.
+            // Waiting → WaitingCountdownAsync owns it (fallback if no countdown active yet)
+            // Betting → CountdownAsync owns it (writes on first tick via StartCountdown below)
+            // Racing  → RaceEntryCountdownAsync owns it (fallback if missed RaceStarting event)
+            switch (status)
+            {
+                case "Waiting":
+                    if (_waitingCts == null)
+                        _statusText.text = "Preparing...";
+                    break;
+                case "Betting":
+                    break;
+                case "Racing":
+                    if (_raceEntryCts == null)
+                        _statusText.text = "Race in progress";
+                    break;
+                case "Settling":
+                    _statusText.text = "Settling...";
+                    break;
+                case "Completed":
+                    _statusText.text = $"{GetWinnerName()} wins!";
+                    break;
+                default:
+                    _statusText.text = status;
+                    break;
+            }
 
             bool isBetting = status == "Betting";
             bool canWatch  = status is "Racing" or "Settling" or "Completed";
