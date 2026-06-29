@@ -89,6 +89,7 @@ namespace CubeRacing
             HasPlacedBet.Value     = false;
             WinnerNpcId.Value      = null;
             BettingStartsAt.Value  = session.bettingStartsAt;
+            RaceStartsAt.Value     = session.raceStartsAt;
             Status.Value           = session.status;
         }
 

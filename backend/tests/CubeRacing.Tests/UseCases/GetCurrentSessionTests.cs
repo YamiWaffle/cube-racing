@@ -58,4 +58,48 @@ public class GetCurrentSessionTests
         result.Should().NotBeNull();
         result!.RaceStartsAt.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ExecuteAsync_IncludesBettingStartsAt_WhenStoreHasValue()
+    {
+        var db          = TestDbContextFactory.Create();
+        var sessionRepo = new GameSessionRepository(db);
+        var betRepo     = new BetRepository(db);
+        var store       = new CurrentSessionStore();
+        var settings    = Options.Create(new GameSettings { NpcCount = 4 });
+
+        var session = GameSession.CreateNew(20);
+        await sessionRepo.AddAsync(session, default);
+        store.Set(session.Id);
+
+        var bettingStartsAt = DateTime.UtcNow.AddSeconds(5);
+        store.BettingStartsAt = bettingStartsAt;
+
+        var useCase = new GetCurrentSession(store, sessionRepo, betRepo, settings);
+        var result  = await useCase.ExecuteAsync();
+
+        result.Should().NotBeNull();
+        result!.BettingStartsAt.Should().BeCloseTo(bettingStartsAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ReturnsNullBettingStartsAt_WhenStoreIsEmpty()
+    {
+        var db          = TestDbContextFactory.Create();
+        var sessionRepo = new GameSessionRepository(db);
+        var betRepo     = new BetRepository(db);
+        var store       = new CurrentSessionStore();
+        var settings    = Options.Create(new GameSettings { NpcCount = 4 });
+
+        var session = GameSession.CreateNew(20);
+        await sessionRepo.AddAsync(session, default);
+        store.Set(session.Id);
+        // store.BettingStartsAt not set → should be null
+
+        var useCase = new GetCurrentSession(store, sessionRepo, betRepo, settings);
+        var result  = await useCase.ExecuteAsync();
+
+        result.Should().NotBeNull();
+        result!.BettingStartsAt.Should().BeNull();
+    }
 }
