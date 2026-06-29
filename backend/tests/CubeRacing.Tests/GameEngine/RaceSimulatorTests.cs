@@ -122,4 +122,23 @@ public class RaceSimulatorTests
         sim.GetWinner().Should().BeNull();
     }
 
+    [Fact]
+    public void FirstNpcToReachFinishEndsRoundImmediately()
+    {
+        // NPC1 reaches finish first (sq18 + dice1 → sq19).
+        // NPC2 would also reach finish (sq17 + dice2 → sq19) but the round
+        // must end the moment NPC1 arrives, so NPC2 never acts.
+        var rand = new FixedRaceRandomizer(order: [1, 2], dice: [1, 2]);
+        var sim = RaceSimulator.CreateWithPositions(
+            new Dictionary<int, List<int>> { [18] = [1], [17] = [2] },
+            mapLength: 20, rand);
+
+        var result = sim.SimulateRound();
+
+        result.Actions.Should().HaveCount(1);
+        result.Actions[0].NpcId.Should().Be(1);
+        result.Actions[0].ToSquare.Should().Be(19);
+        result.Winner.Should().Be(1);
+    }
+
 }

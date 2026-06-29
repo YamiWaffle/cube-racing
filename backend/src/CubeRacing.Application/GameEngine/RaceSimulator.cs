@@ -81,13 +81,16 @@ public class RaceSimulator
 
             var roundAction = new RoundAction(
                 npcId,
-                dice, 
+                dice,
                 fromSquare,
-                toSquare, 
+                toSquare,
                 moving.Skip(1).ToList());
             actions.Add(roundAction);
+
+            if (toSquare == _mapLength - 1)
+                break;
         }
-        
+
         return new RoundResult(actions, GetSquareStacks(), GetWinner());
     }
 
