@@ -253,6 +253,7 @@ namespace CubeRacing
                 }
             }
 
+            _statusText.text = $"Round {payload.roundNumber}";
             await _roundToast.ShowAsync(payload.roundNumber, ct);
             await _dicePanel.ShowAsync(_npcConfig, npcOrder, npcDice, ct);
             _bottomHud.SetRound(npcOrder, npcSteps);
@@ -266,6 +267,8 @@ namespace CubeRacing
 
                 if (!_board.NpcCubes.TryGetValue(action.npcId, out var movingCube)) continue;
 
+                var npcName = _npcConfig.GetById(action.npcId)?.npcName ?? $"NPC {action.npcId}";
+                _statusText.text = $"Round {payload.roundNumber} - {npcName} run!";
                 _bottomHud.SetActiveNpc(action.npcId);
                 await _camera.FocusOnAsync(movingCube.transform, ct);
 
@@ -386,8 +389,8 @@ namespace CubeRacing
         private static string StatusToText(string status) => status switch
         {
             "Racing"    => "Race in progress",
-            "Settling"  => "Settling...",
-            "Completed" => "Race over",
+            "Settling"  => "",
+            "Completed" => "",
             _           => status
         };
 
