@@ -240,24 +240,26 @@ namespace CubeRacing
             if (payload.actions == null || payload.actions.Count == 0) return;
 
             var npcOrder = payload.actions.Select(a => a.npcId).ToArray();
-            var npcSteps = new Dictionary<int, int>();
-            var npcDice  = new Dictionary<int, int>();
-            foreach (var action in payload.actions)
-            {
-                int steps = action.toSquare - action.fromSquare;
-                npcSteps[action.npcId] = steps;
-                npcDice[action.npcId]  = action.diceRoll;
-                foreach (var carried in action.carriedNpcIds)
-                {
-                    npcSteps[carried] = steps;
-                    npcDice[carried]  = action.diceRoll;
-                }
-            }
+            var npcDice = payload.actions.ToDictionary(
+                action => action.npcId,
+                action => action.diceRoll);
 
             _statusText.text = $"Round {payload.roundNumber}";
             await _roundToast.ShowAsync(payload.roundNumber, ct);
             await _dicePanel.ShowAsync(_npcConfig, npcOrder, npcDice, ct);
-            _bottomHud.SetRound(npcOrder, npcSteps);
+            _bottomHud.SetRound(npcOrder, npcDice);
+
+            // --- Debug logging ---
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"[Race] Round {payload.roundNumber} — {payload.actions.Count} action(s):");
+            foreach (var a in payload.actions)
+            {
+                var npcName = _npcConfig.GetById(a.npcId)?.npcName ?? $"NPC {a.npcId}";
+                var carried = a.carriedNpcIds.Count > 0 ? $" carries=[{string.Join(",", a.carriedNpcIds)}]" : "";
+                sb.AppendLine($"  {npcName}: from={a.fromSquare} to={a.toSquare} steps={a.toSquare - a.fromSquare} dice={a.diceRoll}{carried}");
+            }
+            Debug.Log(sb.ToString());
+            // ---------------------
 
             bool hadValidationError = false;
 
@@ -282,13 +284,17 @@ namespace CubeRacing
 
                 movingCube.transform.SetParent(null);
 
+                Debug.Log($"[Race] R{payload.roundNumber} {npcName}: animating {steps} step(s), sq {action.fromSquare}→{action.toSquare}");
+
                 for (int sq = action.fromSquare + 1; sq <= action.toSquare; sq++)
                 {
                     int   stackCount  = _localStacks.TryGetValue(sq, out var existing) ? existing.Count : 0;
                     float h           = _raceConfig.npcHeight;
                     var   targetWorld = _board.GetSquarePosition(sq) + Vector3.up * (h + stackCount * h);
 
+                    Debug.Log($"[Race] R{payload.roundNumber} {npcName}: step to sq={sq} stackCount={stackCount} target={targetWorld}");
                     await movingCube.MoveToAsync(targetWorld, _raceConfig.stepDuration, ct);
+                    Debug.Log($"[Race] R{payload.roundNumber} {npcName}: arrived sq={sq} worldPos={movingCube.transform.position}");
 
                     if (stackCount > 0 && _board.NpcCubes.TryGetValue(_localStacks[sq][^1], out var topNpc))
                         movingCube.transform.SetParent(topNpc.transform);
