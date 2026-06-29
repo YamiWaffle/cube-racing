@@ -100,9 +100,14 @@ namespace CubeRacing
             _raceCompletedSubscriber.Subscribe(m =>
             {
                 if (!_animating)
+                {
                     ShowResult(m.WinnerNpcId, _pendingSettlement);
+                    _pendingSettlement = null;
+                }
                 else
+                {
                     _pendingWinnerNpcId = m.WinnerNpcId;
+                }
             }).AddTo(_disposables);
 
             _settlementSubscriber.Subscribe(m =>
