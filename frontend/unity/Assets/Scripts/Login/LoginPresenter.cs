@@ -54,12 +54,16 @@ namespace CubeRacing
             {
                 _session.LoadFromPrefs();
                 _api.SetTokenProvider(() => _session.Token.ToString());
+
+                var profile = await _api.GetMyProfileAsync(ct);
+                _session.UpdateChips(profile.chipsBalance);
+
                 _sceneLoader.LoadAsync("LobbyScene").Forget();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _errorText.text = $"Load failed, please log in again: {e.Message}";
-                PlayerPrefs.DeleteKey("player_token");
+                PlayerPrefs.DeleteAll();
+                _errorText.text = "Session expired. Please log in again.";
                 _loginButtonText.text = "Login";
                 _loginButton.onClick.RemoveAllListeners();
                 _loginButton.onClick.AddListener(() => LoginAsync(destroyCancellationToken).Forget());

@@ -5,6 +5,14 @@ namespace CubeRacing
 {
     // --- REST response types ---
     [Serializable]
+    public class PlayerProfileResponse
+    {
+        public Guid playerId;
+        public string nickname;
+        public int chipsBalance;
+    }
+
+    [Serializable]
     public class CreatePlayerResponse
     {
         public Guid playerId;

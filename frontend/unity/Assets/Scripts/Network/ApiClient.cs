@@ -26,6 +26,9 @@ namespace CubeRacing
 
         public void SetTokenProvider(Func<string> provider) => _tokenProvider = provider;
 
+        public UniTask<PlayerProfileResponse> GetMyProfileAsync(CancellationToken ct = default)
+            => GetAsync<PlayerProfileResponse>("/api/players/me", ct);
+
         public UniTask<CreatePlayerResponse> CreatePlayerAsync(string nickname, CancellationToken ct = default)
             => PostAsync<CreatePlayerResponse>("/api/players",
                JsonConvert.SerializeObject(new { nickname }), withAuth: false, ct);

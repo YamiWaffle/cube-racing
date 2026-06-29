@@ -1,4 +1,5 @@
 using CubeRacing.Application.UseCases;
+using CubeRacing.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CubeRacing.API.Controllers;
@@ -18,5 +19,14 @@ public class PlayersController : ControllerBase
 
         var result = await _createPlayer.ExecuteAsync(req, ct);
         return Ok(result);
+    }
+
+    [HttpGet("me")]
+    public IActionResult GetMe()
+    {
+        if (HttpContext.Items["Player"] is not Player player)
+            return Unauthorized();
+
+        return Ok(new { playerId = player.Id, nickname = player.Nickname, chipsBalance = player.ChipsBalance });
     }
 }
