@@ -18,6 +18,7 @@ namespace CubeRacing
 
         public async UniTask MoveToAsync(Vector3 target, float duration, CancellationToken ct = default)
         {
+            transform.DOKill();
             await transform.DOJump(target, jumpPower: 1.2f, numJumps: 1, duration: duration)
                            .SetEase(Ease.InOutSine)
                            .ToUniTask(cancellationToken: ct);
