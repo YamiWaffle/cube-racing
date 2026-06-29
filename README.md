@@ -6,6 +6,14 @@ Built as a learning project for .NET backend + Unity frontend integration.
 
 ![Game Flow](docs/game-flow.png)
 
+### Documentation
+
+| Document | Description |
+|---|---|
+| [Architecture](docs/architecture.md) | Layer structure, game lifecycle, RabbitMQ pipeline, key design decisions |
+| [Gameplay & Rules](docs/gameplay.md) | Board, NPCs, betting, race mechanics, settlement |
+| [Communication Protocol](docs/communication-protocol.md) | REST endpoints and SignalR events by game phase |
+
 ---
 
 ## Tech Stack
