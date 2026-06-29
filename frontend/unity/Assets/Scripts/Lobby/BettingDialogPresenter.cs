@@ -8,7 +8,7 @@ using VContainer;
 
 namespace CubeRacing
 {
-    public class BettingDialogPresenter : MonoBehaviour
+    public class BettingDialogPresenter : UIBehaviour
     {
         [SerializeField] private TMP_Text   _titleText;
         [SerializeField] private TMP_Text   _oddsText;
@@ -57,7 +57,7 @@ namespace CubeRacing
             gameObject.SetActive(false);
         }
 
-        public async UniTaskVoid Show(int npcId, CancellationToken ct)
+        public async UniTask Show(int npcId, CancellationToken ct)
         {
             _currentNpcId = npcId;
             var entry     = _npcConfig.GetById(npcId);
@@ -69,15 +69,16 @@ namespace CubeRacing
             _titleText.text = $"Bet on: {entry?.npcName ?? npcId.ToString()}";
             _oddsText.text  = $"Odds: {_currentOdds:F1}x";
             RefreshDisplay();
-            gameObject.SetActive(true);
 
             _confirmButton.onClick.RemoveAllListeners();
             _confirmButton.onClick.AddListener(() => ConfirmAsync(ct).Forget());
+            
+            await UIShowAsync(cancellationToken: ct);
         }
 
         private void Hide()
         {
-            gameObject.SetActive(false);
+            UIHideAsync().Forget();
         }
 
         private void AddAmount(int delta)

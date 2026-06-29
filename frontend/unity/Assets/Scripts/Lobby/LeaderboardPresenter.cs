@@ -8,7 +8,7 @@ using VContainer;
 
 namespace CubeRacing
 {
-    public class LeaderboardPresenter : MonoBehaviour
+    public class LeaderboardPresenter : UIBehaviour
     {
         [SerializeField] private Transform  _rowContainer;
         [SerializeField] private GameObject _rowPrefab;   // simple TMP_Text row
@@ -37,7 +37,7 @@ namespace CubeRacing
 
         public async UniTaskVoid Show(CancellationToken ct)
         {
-            gameObject.SetActive(true);
+            await UIShowAsync(cancellationToken: ct);
             
             foreach (Transform child in _rowContainer) Destroy(child.gameObject);
             _notRankedText.text = string.Empty;
@@ -65,6 +65,6 @@ namespace CubeRacing
                 _notRankedText.text = "(Not in top 20)";
         }
 
-        private void Hide() => gameObject.SetActive(false);
+        private void Hide() => UIHideAsync().Forget();
     }
 }
