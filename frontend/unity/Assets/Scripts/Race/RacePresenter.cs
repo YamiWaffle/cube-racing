@@ -365,7 +365,7 @@ namespace CubeRacing
             if (settlement != null)
                 ApplySettlementText(settlement);
             else
-                _settlementText.text = "結算中...";
+                _settlementText.text = "Settlement in progress ...";
 
             _settlementPanel.SetActive(true);
             _backButton.interactable = true;
