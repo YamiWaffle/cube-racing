@@ -39,6 +39,8 @@ namespace CubeRacing
         private readonly Dictionary<int, NpcCardView> _cards        = new();
         private readonly CompositeDisposable           _disposables  = new();
         private CancellationTokenSource                _countdownCts;
+        private CancellationTokenSource                _waitingCts;
+        private CancellationTokenSource                _raceEntryCts;
 
         [Inject]
         public void Construct(
@@ -72,6 +74,32 @@ namespace CubeRacing
             _gameState.Status.Subscribe(OnStatusChanged).AddTo(_disposables);
             _gameState.NpcOdds.Subscribe(OnOddsChanged).AddTo(_disposables);
             _gameState.HasPlacedBet.Subscribe(OnBetPlacedChanged).AddTo(_disposables);
+            _gameState.BettingStartsAt
+                .Subscribe(t =>
+                {
+                    _waitingCts?.Cancel();
+                    _waitingCts?.Dispose();
+                    _waitingCts = null;
+                    if (t.HasValue && t.Value > DateTime.UtcNow)
+                    {
+                        _waitingCts = new CancellationTokenSource();
+                        WaitingCountdownAsync(t.Value, _waitingCts.Token).Forget();
+                    }
+                })
+                .AddTo(_disposables);
+            _gameState.RaceStartsAt
+                .Subscribe(t =>
+                {
+                    _raceEntryCts?.Cancel();
+                    _raceEntryCts?.Dispose();
+                    _raceEntryCts = null;
+                    if (t.HasValue && t.Value > DateTime.UtcNow)
+                    {
+                        _raceEntryCts = new CancellationTokenSource();
+                        RaceEntryCountdownAsync(t.Value, _raceEntryCts.Token).Forget();
+                    }
+                })
+                .AddTo(_disposables);
             _gameState.BetNpcId.Subscribe(npcId =>
             {
                 foreach (var card in _cards.Values)
@@ -245,6 +273,28 @@ namespace CubeRacing
 
         private void StopCountdown() => _countdownCts?.Cancel();
 
+        private async UniTaskVoid WaitingCountdownAsync(DateTime bettingStartsAt, CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested && DateTime.UtcNow < bettingStartsAt)
+            {
+                int remaining = Math.Max(0, (int)(bettingStartsAt - DateTime.UtcNow).TotalSeconds);
+                _statusText.text = $"Next race in {remaining}s...";
+                await UniTask.Delay(1000, cancellationToken: ct);
+            }
+        }
+
+        private async UniTaskVoid RaceEntryCountdownAsync(DateTime raceStartsAt, CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested && DateTime.UtcNow < raceStartsAt)
+            {
+                int remaining = Math.Max(0, (int)(raceStartsAt - DateTime.UtcNow).TotalSeconds);
+                _statusText.text = $"Welcome to watch the race! Will begin in {remaining}s...";
+                await UniTask.Delay(1000, cancellationToken: ct);
+            }
+            if (!ct.IsCancellationRequested)
+                _statusText.text = "Race in progress";
+        }
+
         private async UniTaskVoid CountdownAsync(CancellationToken ct)
         {
             while (!ct.IsCancellationRequested && (_gameState.SecondsRemaining.Value ?? 0) > 0)
@@ -265,6 +315,10 @@ namespace CubeRacing
         {
             _disposables.Dispose();
             _countdownCts?.Cancel();
+            _waitingCts?.Cancel();
+            _waitingCts?.Dispose();
+            _raceEntryCts?.Cancel();
+            _raceEntryCts?.Dispose();
         }
     }
 }
