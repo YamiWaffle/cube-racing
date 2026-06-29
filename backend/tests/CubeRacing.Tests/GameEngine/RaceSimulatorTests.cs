@@ -127,7 +127,8 @@ public class RaceSimulatorTests
     {
         // NPC1 reaches finish first (sq18 + dice1 → sq19).
         // NPC2 would also reach finish (sq17 + dice2 → sq19) but the round
-        // must end the moment NPC1 arrives, so NPC2 never acts.
+        // must end the moment NPC1 arrives — NPC2 still gets a dice roll entry
+        // for the UI shuffle display, but does not move (fromSquare == toSquare).
         var rand = new FixedRaceRandomizer(order: [1, 2], dice: [1, 2]);
         var sim = RaceSimulator.CreateWithPositions(
             new Dictionary<int, List<int>> { [18] = [1], [17] = [2] },
@@ -135,9 +136,13 @@ public class RaceSimulatorTests
 
         var result = sim.SimulateRound();
 
-        result.Actions.Should().HaveCount(1);
+        result.Actions.Should().HaveCount(2);
         result.Actions[0].NpcId.Should().Be(1);
         result.Actions[0].ToSquare.Should().Be(19);
+        // NPC2 got a dice roll but did not move
+        result.Actions[1].NpcId.Should().Be(2);
+        result.Actions[1].DiceRoll.Should().Be(2);
+        result.Actions[1].FromSquare.Should().Be(result.Actions[1].ToSquare);
         result.Winner.Should().Be(1);
     }
 

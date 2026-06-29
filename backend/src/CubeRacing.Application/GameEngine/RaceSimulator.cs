@@ -53,17 +53,25 @@ public class RaceSimulator
     {
         var order = _randomizer.ShuffleOrder(_npcIds);
         var actions = new List<RoundAction>();
+        bool raceEnded = false;
 
         foreach (var npcId in order)
         {
             var (fromSquare, stackIdx) = FindNpc(npcId);
 
             var notStartYet = fromSquare == -1;
-            
-            // already at finish, skip
+
+            // already at finish, skip entirely
             if (fromSquare == _mapLength - 1) continue;
-            
+
             var dice = _randomizer.RollDice();
+
+            if (raceEnded)
+            {
+                // Race is over — include dice roll for UI display but don't move the NPC
+                actions.Add(new RoundAction(npcId, dice, fromSquare, fromSquare, new List<int>()));
+                continue;
+            }
 
             List<int> moving;
             if (notStartYet)
@@ -75,7 +83,7 @@ public class RaceSimulator
                 moving = _squares[fromSquare].Skip(stackIdx).ToList();
                 _squares[fromSquare] = _squares[fromSquare].Take(stackIdx).ToList();
             }
-            
+
             var toSquare = Math.Min(fromSquare + dice, _mapLength - 1);
             _squares[toSquare].AddRange(moving);
 
@@ -88,7 +96,7 @@ public class RaceSimulator
             actions.Add(roundAction);
 
             if (toSquare == _mapLength - 1)
-                break;
+                raceEnded = true;
         }
 
         return new RoundResult(actions, GetSquareStacks(), GetWinner());
