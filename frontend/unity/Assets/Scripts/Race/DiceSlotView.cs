@@ -38,14 +38,21 @@ namespace CubeRacing
             _numberText.text = finalValue.ToString();
         }
 
-        public UniTask SlideToAsync(Vector2 targetAnchoredPos, float duration, CancellationToken ct)
+        public async UniTask SlideToAsync(Vector2 targetAnchoredPos, float duration, CancellationToken ct)
         {
             RectTransform.DOKill();
-            
-            return RectTransform
+            if (ct.IsCancellationRequested) return;
+
+            var tween = RectTransform
                 .DOAnchorPos(targetAnchoredPos, duration)
-                .SetEase(Ease.InOutSine)
-                .ToUniTask(cancellationToken: ct);
+                .SetEase(Ease.InOutSine);
+
+            await UniTask.WhenAny(tween.ToUniTask(), UniTask.WaitUntilCanceled(ct));
+
+            try { if (tween.IsActive()) tween.Kill(); }
+            catch { }
+
+            ct.ThrowIfCancellationRequested();
         }
     }
 }

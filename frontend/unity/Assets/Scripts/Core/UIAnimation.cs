@@ -7,28 +7,42 @@ namespace CubeRacing
 {
     public static class UIAnimation
     {
-        public static UniTask CommonShowAsync(RectTransform uiTransform,
+        public static async UniTask CommonShowAsync(RectTransform uiTransform,
             float duration = 0.5f,
             CancellationToken cancellationToken = default)
         {
             uiTransform.localScale = Vector3.zero;
-            
             uiTransform.gameObject.SetActive(true);
-            
-            return uiTransform.DOScale(Vector3.one, duration)
-                .SetEase(Ease.OutQuad)
-                .ToUniTask(cancellationToken: cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested) return;
+
+            var tween = uiTransform.DOScale(Vector3.one, duration).SetEase(Ease.OutQuad);
+
+            await UniTask.WhenAny(tween.ToUniTask(), UniTask.WaitUntilCanceled(cancellationToken));
+
+            try { if (tween.IsActive()) tween.Kill(); }
+            catch { }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         public static async UniTask CommonHideAsync(RectTransform uiTransform,
             float duration = 0.5f,
             CancellationToken cancellationToken = default)
         {
-            await uiTransform.DOScale(Vector3.zero, duration)
-                .SetEase(Ease.OutQuad)
-                .ToUniTask(cancellationToken: cancellationToken);
-            
-            uiTransform.gameObject.SetActive(false);
+            if (cancellationToken.IsCancellationRequested) return;
+
+            var tween = uiTransform.DOScale(Vector3.zero, duration).SetEase(Ease.OutQuad);
+
+            await UniTask.WhenAny(tween.ToUniTask(), UniTask.WaitUntilCanceled(cancellationToken));
+
+            try { if (tween.IsActive()) tween.Kill(); }
+            catch { }
+
+            if (!cancellationToken.IsCancellationRequested)
+                uiTransform.gameObject.SetActive(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 }

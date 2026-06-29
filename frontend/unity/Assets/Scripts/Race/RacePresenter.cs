@@ -226,7 +226,7 @@ namespace CubeRacing
             finally
             {
                 _animating = false;
-                if (_pendingWinnerNpcId.HasValue)
+                if (_pendingWinnerNpcId.HasValue && !ct.IsCancellationRequested)
                 {
                     ShowResult(_pendingWinnerNpcId.Value, _pendingSettlement);
                     _pendingWinnerNpcId = null;
