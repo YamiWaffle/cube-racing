@@ -4,8 +4,6 @@ A simplified clone of the "小團快跑" mini-game from Wuthering Waves. Server-
 
 Built as a learning project for .NET backend + Unity frontend integration.
 
-![Game Flow](docs/game-flow.png)
-
 ### Documentation
 
 | Document | Description |
@@ -30,10 +28,18 @@ Built as a learning project for .NET backend + Unity frontend integration.
 ## Game Flow
 
 ```
-[Waiting 5s] → [Betting 60s] → [30s pre-race countdown] → [Racing] → [Settling] → [Completed] → (repeat)
+[Waiting 30s] → [Betting 60s] → [30s pre-race countdown] → [Racing] → [Settling] → [Completed] → (repeat)
 ```
 
-4 NPC cubes (紅/藍/黃/綠方塊) race on a 20-square snake board. Players register, receive 1000 chips, and bet on any NPC during the betting window. A 30-second countdown follows betting end so players can enter the race scene before rounds begin. Winnings are calculated via pari-mutuel odds.
+4 NPC cubes race on a 20-square snake board. Players register, receive 1000 chips, and bet on any NPC during the betting window.
+
+![demo-bet](docs/images/demo-bet.gif)
+
+Players can enter the race scene to watch the race.
+
+![demo-racing](docs/images/demo-racing.gif)
+
+Winnings are calculated via odds.
 
 ---
 
@@ -193,29 +199,11 @@ NPCs are defined in `backend/src/CubeRacing.API/appsettings.json` — not persis
 
 ```json
 "Npcs": [
-  { "Id": 1, "Name": "紅方塊", "ColorHex": "#E53E3E" },
-  { "Id": 2, "Name": "藍方塊", "ColorHex": "#3182CE" },
-  { "Id": 3, "Name": "黃方塊", "ColorHex": "#D69E2E" },
-  { "Id": 4, "Name": "綠方塊", "ColorHex": "#38A169" }
+  { "Id": 1, "Name": "ref cube", "ColorHex": "#E53E3E" },
+  { "Id": 2, "Name": "blue cube", "ColorHex": "#3182CE" },
+  { "Id": 3, "Name": "yellow cube", "ColorHex": "#D69E2E" },
+  { "Id": 4, "Name": "green cube", "ColorHex": "#38A169" }
 ]
 ```
 
 The same IDs and colors are mirrored in the Unity `NpcConfig` ScriptableObject (`Assets/Scenes/Data/NpcConfig.asset`).
-
----
-
-## Key Implementation Notes
-
-**Race group-leader rule:** Each round, NPCs sharing a starting square move as a group — only the first one (by shuffled order) advances, carrying all NPCs above it. Prevents bunching.
-
-**Transaction boundary in Application layer:** `PlaceBet` uses `DbContext` (from `Microsoft.EntityFrameworkCore`, not Infrastructure) to keep Application layer dependency-free of EF concerns.
-
-**Thread safety:** `RabbitMqPublisher` is a singleton; `IModel` access is guarded by `SemaphoreSlim(1,1)`. `ISessionCompletionSignal` uses `SemaphoreSlim(0,1)` with idempotent release.
-
-**Leaderboard Viewport Mask:** The ScrollView Viewport uses `Mask` (not `RectMask2D`). The Viewport `Image` must have `alpha=1`; `showMaskGraphic=false` hides it visually but the stencil write still depends on the Image alpha. An `alpha=0` Image produces an empty stencil that silently hides all scrollable content.
-
-**Race start delay:** `BettingEndedConsumer` sets `ICurrentSessionStore.RaceStartsAt`, broadcasts `RaceStarting`, then `await Task.Delay(30s)` before running round 1. Frontend shows a countdown; late-joiners fall back to `GET /api/sessions/current` for the timestamp.
-
-**Step-by-step animation:** `PlayRoundAsync` DOJumps one square at a time. Stacked NPCs use Unity transform parent-child hierarchy — moving the bottom cube automatically drags all cubes above it. `_localStacks` is resynced from `payload.squareStacks` after every round; validation logs an error and snaps positions on mismatch.
-
-**Lobby bet indicator:** After placing a bet, the chosen NPC card gets a gold highlight and all others get a grey overlay. State lives in `GameStateService.BetNpcId`/`BetAmount`; `SetBet` must set `BetAmount` before `BetNpcId` because R3 fires subscribers synchronously.
