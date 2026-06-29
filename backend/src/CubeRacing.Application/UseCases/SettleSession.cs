@@ -35,16 +35,13 @@ public class SettleSession
             bet.SetWinAmount(result.WinAmount);
             await _bets.UpdateAsync(bet, ct);
 
-            if (result.WinAmount > 0)
+            var player = await _players.GetByIdAsync(bet.PlayerId, ct);
+            if (player is not null && result.WinAmount > 0)
             {
-                var player = await _players.GetByIdAsync(bet.PlayerId, ct);
-                if (player is not null)
-                {
-                    player.AddWinnings(result.WinAmount);
-                    await _players.UpdateAsync(player, ct);
-                }
+                player.AddWinnings(result.WinAmount);
+                await _players.UpdateAsync(player, ct);
             }
-            playerResults.Add(new PlayerResultDto(bet.PlayerId, result.WinAmount));
+            playerResults.Add(new PlayerResultDto(bet.PlayerId, player?.Nickname ?? string.Empty, result.WinAmount));
         }
 
         session.Complete(winnerNpcId);
