@@ -23,6 +23,9 @@ namespace CubeRacing
         [SerializeField] private BettingDialogPresenter  _bettingDialog;
         [SerializeField] private LeaderboardPresenter    _leaderboardPanel;
 
+        [SerializeField] private RectTransform _settlementNotif;
+        [SerializeField] private TMP_Text      _settlementNotifText;
+
         private bool _isStarted;
         private bool _isInjected;
         private bool _isInitialized;
@@ -41,6 +44,7 @@ namespace CubeRacing
         private CancellationTokenSource                _countdownCts;
         private CancellationTokenSource                _waitingCts;
         private CancellationTokenSource                _raceEntryCts;
+        private CancellationTokenSource                _notifCts;
 
         [Inject]
         public void Construct(
@@ -258,7 +262,31 @@ namespace CubeRacing
         private void OnSettlementDone(SettlementDoneMessage msg)
         {
             var me = msg.Payload.playerResults?.Find(r => r.nickname == _session.Nickname);
-            if (me != null) _session.UpdateChips(_session.Chips.CurrentValue + me.winAmount);
+            if (me == null) return;
+
+            if (me.winAmount > 0)
+                _session.UpdateChips(_session.Chips.CurrentValue + me.winAmount);
+
+            string message = me.winAmount > 0
+                ? $"You won +{me.winAmount:N0} chips!"
+                : "No win this round";
+
+            ShowNotifAsync(message, destroyCancellationToken).Forget();
+        }
+
+        private async UniTaskVoid ShowNotifAsync(string message, CancellationToken ct)
+        {
+            if (_settlementNotif == null) return;
+
+            _notifCts?.Cancel();
+            _notifCts?.Dispose();
+            _notifCts = new CancellationTokenSource();
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _notifCts.Token);
+
+            _settlementNotifText.text = message;
+            await UIAnimation.CommonShowAsync(_settlementNotif, 0.3f, linked.Token);
+            await UniTask.Delay(3000, cancellationToken: linked.Token);
+            await UIAnimation.CommonHideAsync(_settlementNotif, 0.3f, linked.Token);
         }
 
         private void OnWatchRaceClicked()
@@ -319,6 +347,8 @@ namespace CubeRacing
             _waitingCts?.Dispose();
             _raceEntryCts?.Cancel();
             _raceEntryCts?.Dispose();
+            _notifCts?.Cancel();
+            _notifCts?.Dispose();
         }
     }
 }
