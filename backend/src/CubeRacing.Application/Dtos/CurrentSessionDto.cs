@@ -6,4 +6,5 @@ public record CurrentSessionDto(
     int?              BettingSecondsRemaining,
     List<NpcOddsDto>  NpcOdds,
     int               MapLength,
-    DateTime?         RaceStartsAt = null);
+    DateTime?         RaceStartsAt    = null,
+    DateTime?         BettingStartsAt = null);

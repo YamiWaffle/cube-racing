@@ -31,4 +31,7 @@ public class GameHubNotifier : IGameHubNotifier
 
     public Task NotifySettlementDoneAsync(Guid sessionId, object result)
         => _hub.Clients.Group(sessionId.ToString()).SendAsync("SettlementDone", result);
+
+    public Task NotifyWaitingStartedAsync(DateTime bettingStartsAt)
+        => _hub.Clients.All.SendAsync("WaitingStarted", new { bettingStartsAt });
 }

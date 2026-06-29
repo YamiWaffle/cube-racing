@@ -11,4 +11,5 @@ public interface IGameHubNotifier
     Task NotifyRoundExecutedAsync(Guid sessionId, RoundExecutedEvent round);
     Task NotifyRaceCompletedAsync(Guid sessionId, int winnerNpcId);
     Task NotifySettlementDoneAsync(Guid sessionId, object result);
+    Task NotifyWaitingStartedAsync(DateTime bettingStartsAt);
 }

@@ -39,7 +39,8 @@ public class GameSessionManager : BackgroundService
 
     private async Task RunSessionLifecycleAsync(CancellationToken ct)
     {
-        _store.RaceStartsAt = null;
+        _store.RaceStartsAt    = null;
+        _store.BettingStartsAt = null;
 
         // Create session
         using var scope = _scopeFactory.CreateScope();
@@ -49,8 +50,12 @@ public class GameSessionManager : BackgroundService
         await sessionRepo.AddAsync(session, ct);
         _store.Set(session.Id);
 
-        // Waiting phase
+        // Waiting phase — broadcast countdown to all clients before delay
+        var bettingStartsAt = DateTime.UtcNow.AddSeconds(_settings.WaitingDurationSeconds);
+        _store.BettingStartsAt = bettingStartsAt;
+        await _hubNotifier.NotifyWaitingStartedAsync(bettingStartsAt);
         await Task.Delay(TimeSpan.FromSeconds(_settings.WaitingDurationSeconds), ct);
+        _store.BettingStartsAt = null;
 
         // Betting phase
         session.StartBetting(_settings.BettingDurationSeconds);

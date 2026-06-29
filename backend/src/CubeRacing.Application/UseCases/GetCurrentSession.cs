@@ -46,6 +46,6 @@ public class GetCurrentSession
 
         return new CurrentSessionDto(
             session.Id, session.Status.ToString(), remaining, npcOdds,
-            session.MapLength, _store.RaceStartsAt);
+            session.MapLength, _store.RaceStartsAt, _store.BettingStartsAt);
     }
 }
